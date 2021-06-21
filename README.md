@@ -6,6 +6,6 @@ given a pdb code and a ligand geometry file (sdf).
 # Using the code
 
 Having the Schrodinger Software is a prerequisite. Call this code
-`$SCHRODINGER/run pdbid ligandfile.sdf`
+`$SCHRODINGER/run main.py pdbid ligandfile.sdf`
 
-For example, `$SCHRODINGER/run 4mxo S985ligand.sdf`
+For example, `$SCHRODINGER/run main.py 4mxo S985ligand.sdf`
