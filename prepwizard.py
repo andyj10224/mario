@@ -7,7 +7,10 @@ import schrodinger.application.prepwizard2.tasks as tasks
 def prepare_pdb(pdbid : str) -> list:
 
     # Read in the pdb
-    pdb_struct = prepare.retrieve_and_read_pdb(pdbid)
+    try:
+        pdb_struct = prepare.retrieve_and_read_pdb(pdbid)
+    except:
+        pdb_struct = structure.StructureReader.read(f'{pdbid}.pdb')
     
     ### => Preprocessing Input <= ###
     ppi = tasks.PreprocessInput()
