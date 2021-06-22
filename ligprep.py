@@ -41,7 +41,7 @@ def prepare_ligands(infile : str) -> None:
     lps.setInput(1, 'INPUT1', ligandsobj)
 
     # Where to save output
-    lps.setOutputName(1, 'OUTPUT')
+    lps.setOutputName(1, 'CLEANED_LIGANDS')
 
     # Outputs (dictionary of output objects)
     outputs = lps.run()

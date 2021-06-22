@@ -86,7 +86,7 @@ USEFLEXASL                = boolean(default=False) # specify movable atoms by AS
 USEFLEXMAE                = boolean(default=False) # specify movable atoms by property in input .mae file
 """
 
-def make_grid(infile: str, pdbid: str) -> list:
+def make_grid(infile: str, ref_file : str, pdbid: str) -> list:
     protein_system = structure.StructureReader.read(infile)
     ligand_lists = findhets.find_hets(protein_system, include_metals=False, include_hydrogens=True)
 
@@ -166,15 +166,16 @@ def make_grid(infile: str, pdbid: str) -> list:
     options['USEFLEXASL'] = False
     options['USEFLEXMAE'] = False
 
-    options['RECEP_FILE'] = infile
+    options['RECEP_FILE'] = ref_file
 
     grid_files = []
 
     for n, element in enumerate(ligand_lists):
         ligand_st = protein_system.extract(element)
-        print(n, len(ligand_st.atom))
+        # print(n, len(ligand_st.atom))
         ligand_obj = analyze.Ligand(ligand_st)
         lig_com = ligand_obj.centroid
+        # options['LIGAND_MOLECULE'] = (n+1)
         # options['LIGAND_INDEX'] = (n+1)
         options['JOBNAME'] = f'{pdbid}-site-{n+1}-grid'
         options['GRIDFILE'] = f'{pdbid}-site-{n+1}-grid.zip'

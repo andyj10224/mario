@@ -1,6 +1,7 @@
 import subprocess
 import sys
 import os
+import time
 
 import schrodinger.structure as structure
 import schrodinger.application.glide.glide as glide
@@ -212,6 +213,9 @@ def dock(gridfile: str, ligandfile: str) -> None:
     dock_job.writeSimplified(f'{gridfile[:-4]}-dock.inp')
 
     os.system(f'{schrodinger_path}/glide {gridfile[:-4]}-dock.inp')
+
+    while not os.path.isfile(f'{gridfile[:-4]}-dock_pv.maegz'):
+        time.sleep(1.0)
 
 if __name__ == '__main__':
     dock(sys.argv[1], sys.argv[2])
