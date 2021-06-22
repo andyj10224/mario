@@ -8,7 +8,7 @@ import schrodinger.structutils.analyze as analyze
 import schrodinger.protein.findhets as findhets
 import schrodinger.application.glide.glide as glide
 
-schrodinger_path = '/opt/schrodinger/suites2021-2'
+schrodinger_path = os.environ.get('SCHRODINGER')
 
 keywords_list = """
 ASLSTRINGS                = string_list(default=list()) # ASL strings for receptor scaling
@@ -185,7 +185,7 @@ def make_grid(infile: str, pdbid: str) -> list:
 
         grid_files.append(options['GRIDFILE'])
 
-        subprocess.call((f'{schrodinger_path}/glide', f'{pdbid}-site-{n+1}-grid.inp'))
+        os.system(f'{schrodinger_path}/glide {pdbid}-site-{n+1}-grid.inp')
 
         while not os.path.isfile(options['GRIDFILE']):
             time.sleep(1.0)

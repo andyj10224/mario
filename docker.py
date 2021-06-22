@@ -1,10 +1,11 @@
 import subprocess
 import sys
+import os
 
 import schrodinger.structure as structure
 import schrodinger.application.glide.glide as glide
 
-schrodinger_path = '/opt/schrodinger/suites2021-2'
+schrodinger_path = os.environ.get('SCHRODINGER')
 
 keywords_list = """
 AMIDE_MODE                  = option('penal', 'fixed', 'free', 'trans', 'generalized', default='generalized') # amide bond rotation behavior: "fixed", "free", "penal", "trans", "gen[eralized]"
@@ -210,7 +211,7 @@ def dock(gridfile: str, ligandfile: str) -> None:
     dock_job = glide.Dock(options)
     dock_job.writeSimplified(f'{gridfile[:-4]}-dock.inp')
 
-    subprocess.call((f'{schrodinger_path}/glide', f'{gridfile[:-4]}-dock.inp'))
+    os.system(f'${schrodinger_path}/glide {gridfile[:-4]}-dock.inp')
 
 if __name__ == '__main__':
     dock(sys.argv[1], sys.argv[2])
