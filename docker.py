@@ -211,7 +211,7 @@ def dock(gridfile: str, ligandfile: str) -> None:
     dock_job = glide.Dock(options)
     dock_job.writeSimplified(f'{gridfile[:-4]}-dock.inp')
 
-    os.system(f'${schrodinger_path}/glide {gridfile[:-4]}-dock.inp')
+    os.system(f'{schrodinger_path}/glide {gridfile[:-4]}-dock.inp')
 
 if __name__ == '__main__':
     dock(sys.argv[1], sys.argv[2])
