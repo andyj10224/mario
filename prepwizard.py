@@ -1,4 +1,5 @@
 import sys
+import os
 
 import schrodinger.structure as structure
 import schrodinger.application.prepwizard2.prepare as prepare
@@ -7,10 +8,10 @@ import schrodinger.application.prepwizard2.tasks as tasks
 def prepare_pdb(pdbid : str) -> list:
 
     # Read in the pdb
-    try:
-        pdb_struct = prepare.retrieve_and_read_pdb(pdbid)
-    except:
+    if os.path.isfile(f'{pdbid}.pdb'):
         pdb_struct = structure.StructureReader.read(f'{pdbid}.pdb')
+    else:
+        pdb_struct = prepare.retrieve_and_read_pdb(pdbid)
     
     ### => Preprocessing Input <= ###
     ppi = tasks.PreprocessInput()
