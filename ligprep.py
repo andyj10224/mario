@@ -45,7 +45,7 @@ def prepare_ligands(infile : str) -> None:
 
     # Outputs (dictionary of output objects)
     outputs = lps.run()
-    print(outputs)
+    # print(outputs)
 
 if __name__ == '__main__':
     prepare_ligands(sys.argv[1])

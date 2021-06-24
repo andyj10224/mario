@@ -11,3 +11,9 @@ Having the Schrodinger Software is a prerequisite. Call this code
 IMPORTANT: If you do not have internet access, make sure that `pdbid.pdb`, with the exact name and format, is in the directory.
 
 For example, `$SCHRODINGER/run main.py 4mxo S985ligand.sdf`
+
+## MMGBSA
+
+MMGBSA is NOT part of the pipeline and must be run separately
+
+To run MMGBSA, call `$SCHRODINGER/run mmgbsa.py pdbid /path/to/ligand/pose/file/output`

@@ -31,26 +31,31 @@ def finalize(pdbid : str):
     if not os.path.isdir(pdbid):
         os.system(f'mkdir {pdbid}')
 
-    if not os.path.isdir(f'{pdbid}/logs'):
-        os.system(f'mkdir {pdbid}/logs')
+    logs = os.path.join(pdbid, 'logs')
+    inputs = os.path.join(pdbid, 'inputs')
+    grids = os.path.join(pdbid, 'grids')
+    outputs = os.path.join(pdbid, 'outputs')
+
+    if not os.path.isdir(logs):
+        os.system(f'mkdir {logs}')
     
-    os.system(f'mv *.log {pdbid}/logs')
+    os.system(f'mv *.log {logs}')
 
-    if not os.path.isdir(f'{pdbid}/inputs'):
-        os.system(f'mkdir {pdbid}/inputs')
+    if not os.path.isdir(inputs):
+        os.system(f'mkdir {inputs}')
     
-    os.system(f'mv *.inp {pdbid}/inputs')
+    os.system(f'mv *.inp {inputs}')
 
-    if not os.path.isdir(f'{pdbid}/grids'):
-        os.system(f'mkdir {pdbid}/grids')
+    if not os.path.isdir(grids):
+        os.system(f'mkdir {grids}')
 
-    os.system(f'mv *.zip {pdbid}/grids')
+    os.system(f'mv *.zip {grids}')
 
-    if not os.path.isdir(f'{pdbid}/outputs'):
-        os.system(f'mkdir {pdbid}/outputs')
+    if not os.path.isdir(outputs):
+        os.system(f'mkdir {outputs}')
     
-    os.system(f'mv *.mae {pdbid}/outputs')
-    os.system(f'mv *.maegz {pdbid}/outputs')
+    os.system(f'mv *.mae {outputs}')
+    os.system(f'mv *.maegz {outputs}')
 
 if __name__ == '__main__':
     grid_files, prep_ligfile = step1(sys.argv[1], sys.argv[2])
