@@ -196,7 +196,10 @@ WRITE_XP_DESC               = boolean(default=False) # generate data for visuali
 WRITEREPT                   = boolean(default=False) # write human-readable report file (.rept)
 """
 
-def dock(gridfile: str, ligandfile: str) -> None:
+def dock(gridfile: str, ligandfile: str, pdbid: str, orig_lig: str) -> None:
+
+    dockdir = os.path.join('docking', f'{pdbid}-{orig_lig[:-4]}-docking')
+    if not os.path.isdir(dockdir): os.makedirs(dockdir)
 
     options = {}
     options['GRIDFILE'] = gridfile
@@ -210,12 +213,17 @@ def dock(gridfile: str, ligandfile: str) -> None:
     options['KEEP_SUBJOB_POSES'] = True
 
     dock_job = glide.Dock(options)
-    dock_job.writeSimplified(f'{gridfile[:-4]}-dock.inp')
 
-    os.system(f'{schrodinger_path}/glide {gridfile[:-4]}-dock.inp')
+    gridbase = os.path.split(gridfile)[-1]
 
-    while not os.path.isfile(f'{gridfile[:-4]}-dock_pv.maegz'):
+    dock_input = os.path.join(dockdir, f'{gridbase[:-4]}-dock.inp')
+    dock_job.writeSimplified(dock_input)
+
+    os.system(f'{schrodinger_path}/glide {dock_input}')
+
+    posefile = f'{gridbase[:-4]}-dock_pv.maegz'
+
+    while not os.path.isfile(posefile):
         time.sleep(1.0)
-
-if __name__ == '__main__':
-    dock(sys.argv[1], sys.argv[2])
+    
+    os.system(f'mv {posefile} {os.path.join(dockdir, posefile)}')

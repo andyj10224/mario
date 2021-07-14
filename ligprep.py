@@ -1,4 +1,4 @@
-import sys
+import os, sys
 
 import schrodinger.structure as structure
 import schrodinger.pipeline.stages.ligprep as ligprep
@@ -41,11 +41,14 @@ def prepare_ligands(infile : str) -> None:
     lps.setInput(1, 'INPUT1', ligandsobj)
 
     # Where to save output
-    lps.setOutputName(1, 'CLEANED_LIGANDS')
+    lps.setOutputName(1, f'{infile[:-4]}_prepared')
 
     # Outputs (dictionary of output objects)
-    outputs = lps.run()
-    # print(outputs)
+    lps.run()
 
-if __name__ == '__main__':
-    prepare_ligands(sys.argv[1])
+    prepfile = f'{infile[:-4]}_prepared-001.maegz'
+    infile_final = os.path.join('ligands', infile[:-4], f'{infile[:-4]}_raw.sdf')
+    prepfile_final = os.path.join('ligands', infile[:-4], f'{infile[:-4]}_prepared.maegz')
+
+    os.system(f'cp {infile} {infile_final}')
+    os.system(f'mv {prepfile} {prepfile_final}')

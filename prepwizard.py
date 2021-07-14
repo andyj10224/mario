@@ -1,17 +1,22 @@
-import sys
-import os
+import sys, os
 
 import schrodinger.structure as structure
 import schrodinger.application.prepwizard2.prepare as prepare
 import schrodinger.application.prepwizard2.tasks as tasks
 
-def prepare_pdb(pdbid : str) -> list:
+def prepare_pdb(pdbid : str, retrieve_pdb : bool) -> list:
+
+    raw_pdb_path = os.path.join('proteins', pdbid, f'{pdbid}_raw.pdb')
 
     # Read in the pdb
     if os.path.isfile(f'{pdbid}.pdb'):
         pdb_struct = structure.StructureReader.read(f'{pdbid}.pdb')
-    else:
+        os.system(f'cp {pdbid}.pdb {raw_pdb_path}')
+    elif retrieve_pdb:
         pdb_struct = prepare.retrieve_and_read_pdb(pdbid)
+        os.system(f'cp {pdbid}.pdb {raw_pdb_path}')
+    else:
+        raise Exception(f'{pdbid}.pdb is not found in the directory')
     
     ### => Preprocessing Input <= ###
     ppi = tasks.PreprocessInput()
@@ -99,11 +104,8 @@ def prepare_pdb(pdbid : str) -> list:
     prepared_files = []
 
     for n, st in enumerate(output_structs):
-        fname = f'{pdbid}_prepared_struct_{n}.mae'
+        fname = os.path.join('proteins', pdbid, f'{pdbid}_prepared_struct_{n}.mae')
         st.write(fname)
         prepared_files.append(fname)
 
     return prepared_files
-
-if __name__ == '__main__':
-    prepare_pdb(sys.argv[1])

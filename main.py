@@ -1,18 +1,30 @@
-import sys
-
-import os
+import sys, os, argparse
 
 import prepwizard as pw
 import ligandremover as lr
 import ligprep as lp
 import gridmaker as gr
 import docker as dk
+import apnetprep as ap
 
-def step1(pdbid : str, lig_input : str) -> tuple:
+def run_pipeline(pdbid : str, liginput : str, retrieve_pdb : bool) -> tuple:
 
-    prepared_pdbs = pw.prepare_pdb(pdbid)
-    lp.prepare_ligands(lig_input)
-    prep_ligfile = "CLEANED_LIGANDS-001.maegz"
+    if not liginput.endswith('.sdf'):
+        raise Exception("Ligand input must be in .sdf format")
+    if not os.path.isfile(liginput):
+        raise Exception(f"File {liginput} does not exist")
+
+    pdir = os.path.join('proteins', pdbid)
+    ldir = os.path.join('ligands', liginput[:-4])
+    
+    if not os.path.isdir(ldir): os.makedirs(ldir)
+    if not os.path.isdir(pdir): os.makedirs(pdir)
+
+    prepared_pdbs = pw.prepare_pdb(pdbid, retrieve_pdb)
+    lp.prepare_ligands(liginput)
+
+    # The prepared ligand file
+    prep_ligfile = os.path.join('ligands', liginput[:-4], f'{liginput[:-4]}_prepared.maegz')
 
     grid_files = []
     for pdbfile in prepared_pdbs:
@@ -20,44 +32,28 @@ def step1(pdbid : str, lig_input : str) -> tuple:
         files = gr.make_grid(pdbfile, ligand_free_file, pdbid)
         grid_files.extend(files)
 
-    return (grid_files, prep_ligfile)
-
-def step2(grid_files : list, prep_ligfile : str) -> None:
     for gridfile in grid_files:
-        dk.dock(gridfile, prep_ligfile)
+        dk.dock(gridfile, prep_ligfile, pdbid, liginput)
 
-def finalize(pdbid : str):
+def prep_apnet():
 
-    if not os.path.isdir(pdbid):
-        os.system(f'mkdir {pdbid}')
-
-    logs = os.path.join(pdbid, 'logs')
-    inputs = os.path.join(pdbid, 'inputs')
-    grids = os.path.join(pdbid, 'grids')
-    outputs = os.path.join(pdbid, 'outputs')
-
-    if not os.path.isdir(logs):
-        os.system(f'mkdir {logs}')
-    
-    os.system(f'mv *.log {logs}')
-
-    if not os.path.isdir(inputs):
-        os.system(f'mkdir {inputs}')
-    
-    os.system(f'mv *.inp {inputs}')
-
-    if not os.path.isdir(grids):
-        os.system(f'mkdir {grids}')
-
-    os.system(f'mv *.zip {grids}')
-
-    if not os.path.isdir(outputs):
-        os.system(f'mkdir {outputs}')
-    
-    os.system(f'mv *.mae {outputs}')
-    os.system(f'mv *.maegz {outputs}')
+    return True
 
 if __name__ == '__main__':
-    grid_files, prep_ligfile = step1(sys.argv[1], sys.argv[2])
-    step2(grid_files, prep_ligfile)
-    finalize(sys.argv[1])
+
+    parser = argparse.ArgumentParser(description='MARIO: A pipeline to preprocess protein-ligand systems for further analysis')
+
+    parser.add_argument('pdbid', help='[string] The pdbid for the crystallographic protein-ligand geometry on Protein Data Bank')
+    parser.add_argument('ligfile', help='[string] Path to the ligand file containing raw data')
+
+    parser.add_argument('--mmgbsa', help='[bool] run mmgbsa?', default=False)
+    parser.add_argument('--retrieve_pdb', help='[bool] Get the pdb online if the file is not in directory?', default=False)
+
+    args = parser.parse_args(sys.argv[1:])
+
+    pdbid = args.pdbid
+    ligfile = args.ligfile
+    mmgbsa = args.mmgbsa
+    retrieve_pdb = args.retrieve_pdb
+
+    run_pipeline(pdbid, ligfile, retrieve_pdb)

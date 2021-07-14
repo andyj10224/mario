@@ -86,9 +86,12 @@ USEFLEXASL                = boolean(default=False) # specify movable atoms by AS
 USEFLEXMAE                = boolean(default=False) # specify movable atoms by property in input .mae file
 """
 
-def make_grid(infile: str, ref_file : str, pdbid: str) -> list:
+def make_grid(infile: str, ligfile : str, pdbid: str) -> list:
     protein_system = structure.StructureReader.read(infile)
     ligand_lists = findhets.find_hets(protein_system, include_metals=False, include_hydrogens=True)
+
+    grid_dir = os.path.join('proteins', pdbid, "grids")
+    if not os.path.isdir(grid_dir): os.makedirs(grid_dir)
 
     options = {}
     options['ASLSTRINGS'] = []
@@ -166,7 +169,7 @@ def make_grid(infile: str, ref_file : str, pdbid: str) -> list:
     options['USEFLEXASL'] = False
     options['USEFLEXMAE'] = False
 
-    options['RECEP_FILE'] = ref_file
+    options['RECEP_FILE'] = ligfile
 
     grid_files = []
 
@@ -178,20 +181,19 @@ def make_grid(infile: str, ref_file : str, pdbid: str) -> list:
         # options['LIGAND_MOLECULE'] = (n+1)
         # options['LIGAND_INDEX'] = (n+1)
         options['JOBNAME'] = f'{pdbid}-site-{n+1}-grid'
-        options['GRIDFILE'] = f'{pdbid}-site-{n+1}-grid.zip'
+        options['GRIDFILE'] = os.path.join(grid_dir, f'{pdbid}-site-{n+1}-grid.zip')
         # options['OUTPUTDIR'] = f'{pdbid}-ligand-{n+1}-grid'
         options['GRID_CENTER'] = [lig_com[0], lig_com[1], lig_com[2]]
         glide_job = glide.Gridgen(options)
-        glide_job.writeSimplified(f'{pdbid}-site-{n+1}-grid.inp')
+
+        inp_file = os.path.join(grid_dir, f'{pdbid}-site-{n+1}-grid.inp')
+        glide_job.writeSimplified(inp_file)
 
         grid_files.append(options['GRIDFILE'])
 
-        os.system(f'{schrodinger_path}/glide {pdbid}-site-{n+1}-grid.inp')
+        os.system(f'{schrodinger_path}/glide {inp_file}')
 
         while not os.path.isfile(options['GRIDFILE']):
             time.sleep(1.0)
             
     return grid_files
-
-if __name__ == '__main__':
-    make_grid(sys.argv[1], sys.argv[2])
