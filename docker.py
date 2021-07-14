@@ -196,10 +196,19 @@ WRITE_XP_DESC               = boolean(default=False) # generate data for visuali
 WRITEREPT                   = boolean(default=False) # write human-readable report file (.rept)
 """
 
-def dock(gridfile: str, ligandfile: str, pdbid: str, orig_lig: str) -> None:
+def dock(gridfile: str, ligandfile: str) -> str:
+    """
+    Calls a Glide grid docking job given a gridfile and prepared ligands.
 
-    dockdir = os.path.join('docking', f'{pdbid}-{orig_lig[:-4]}-docking')
-    if not os.path.isdir(dockdir): os.makedirs(dockdir)
+    Args:
+        gridfile (str) : Path to the gridfile to run the docking on
+        ligandfile (str) : Path to the ligandfile to run the docking on
+
+    Returns:
+        posefile (str) : Path to the final .maegz file of the docked poses
+    """
+
+    if not os.path.isdir('docking'): os.makedirs('docking')
 
     options = {}
     options['GRIDFILE'] = gridfile
@@ -214,16 +223,25 @@ def dock(gridfile: str, ligandfile: str, pdbid: str, orig_lig: str) -> None:
 
     dock_job = glide.Dock(options)
 
-    gridbase = os.path.split(gridfile)[-1]
+    # Base name of the grid file
+    gridbase = os.path.splitext(os.path.split(gridfile)[-1])[0]
+    # Base name of the ligand file
+    ligbase = os.path.splitext(os.path.split(ligandfile)[-1])[0]
 
-    dock_input = os.path.join(dockdir, f'{gridbase[:-4]}-dock.inp')
+    dock_input = os.path.join('docking', f'{gridbase}_{ligbase}_docking.inp')
     dock_job.writeSimplified(dock_input)
 
     os.system(f'{schrodinger_path}/glide {dock_input}')
 
-    posefile = f'{gridbase[:-4]}-dock_pv.maegz'
+    posefile = f'{gridbase}_{ligbase}_docking_pv.maegz'
 
     while not os.path.isfile(posefile):
         time.sleep(1.0)
     
-    os.system(f'mv {posefile} {os.path.join(dockdir, posefile)}')
+    os.system(f'mv {posefile} {os.path.join("docking", posefile)}')
+    posefile = os.path.join("docking", posefile)
+
+    return posefile
+
+if __name__ == '__main__':
+    dock(sys.argv[1], sys.argv[2])

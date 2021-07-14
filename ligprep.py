@@ -5,7 +5,22 @@ import schrodinger.pipeline.stages.ligprep as ligprep
 import schrodinger.pipeline.pipeio as pipeio
 
 
-def prepare_ligands(infile : str) -> None:
+def prepare_ligands(input : str) -> str:
+    """
+    A calling function that runs the Schrodinger Maestro ligprep on a raw, unprepared ligand file
+
+    Args:
+        input (str) : The name of the ligand input file, located in ligands/{input}.sdf
+
+    Returns: 
+        output_path (str) : The file path of the prepared ligand after ligprep has finished (located in ligprep dir)
+    """
+
+    ligands = os.path.join('ligands', f'{input}.sdf')
+
+    if not os.path.isfile(ligands):
+        raise FileNotFoundError(f"The ligand input file {ligands} does not exist!")
+
     lps = ligprep.LigPrepStage("Ligprep")
 
     lps['UNIQUEFIELD'] = "NONE" # Field to identify unique compound by
@@ -36,19 +51,23 @@ def prepare_ligands(infile : str) -> None:
     lps['OUTFORMAT'] = "mae"
 
     # Input Ligand Objects
-    infile_list = [infile]
+    infile_list = [ligands]
     ligandsobj = pipeio.Structures(infile_list)
     lps.setInput(1, 'INPUT1', ligandsobj)
 
     # Where to save output
-    lps.setOutputName(1, f'{infile[:-4]}_prepared')
+    if not os.path.isdir('ligprep'): os.makedirs('ligprep')
+    output_path = os.path.join('ligprep', f'{input}_prepared.maegz')
+
+    lps.setOutputName(1, f'{input}_prepared')
 
     # Outputs (dictionary of output objects)
     lps.run()
 
-    prepfile = f'{infile[:-4]}_prepared-001.maegz'
-    infile_final = os.path.join('ligands', infile[:-4], f'{infile[:-4]}_raw.sdf')
-    prepfile_final = os.path.join('ligands', infile[:-4], f'{infile[:-4]}_prepared.maegz')
+    prepfile = f'{input}_prepared-001.maegz'
+    os.system(f'mv {prepfile} {output_path}')
 
-    os.system(f'cp {infile} {infile_final}')
-    os.system(f'mv {prepfile} {prepfile_final}')
+    return output_path
+
+if __name__ == '__main__':
+    prepare_ligands(sys.argv[1])

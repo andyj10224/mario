@@ -86,12 +86,38 @@ USEFLEXASL                = boolean(default=False) # specify movable atoms by AS
 USEFLEXMAE                = boolean(default=False) # specify movable atoms by property in input .mae file
 """
 
-def make_grid(infile: str, ligfile : str, pdbid: str) -> list:
-    protein_system = structure.StructureReader.read(infile)
+def make_grid(protein_file : str, pdbid : str) -> list:
+    """
+    The function used to call the pipeline, the central information flow hub.
+
+    Args:
+        protein_file (str) : The filepath of the prepared protein, located in prepwizard directory
+        pdbid (str) : The pdbid of the protein we are working with (to help with naming and indexing)
+
+    Returns:
+        grid_files (list[str]) : The filepath of the protein grid files
+    """
+
+    protein_system = structure.StructureReader.read(protein_file)
     ligand_lists = findhets.find_hets(protein_system, include_metals=False, include_hydrogens=True)
 
-    grid_dir = os.path.join('proteins', pdbid, "grids")
-    if not os.path.isdir(grid_dir): os.makedirs(grid_dir)
+    # Center of mass of all ligands in pdb file
+    ligand_coms = []
+
+    for n, atoms in enumerate(ligand_lists):
+        ligand_st = protein_system.extract(atoms)
+        ligand_obj = analyze.Ligand(ligand_st)
+        ligand_coms.append(ligand_obj.centroid)
+
+    # Remove the ligands from the protein (and create the receptor file)
+    atoms_to_remove = []
+
+    for ligand in ligand_lists:
+        atoms_to_remove.extend(ligand)
+
+    protein_system.deleteAtoms(atoms_to_remove)
+    protein_no_lig = f'{os.path.splitext(protein_file)}_no_ligand.mae'
+    structure.StructureWriter.write(protein_system, protein_no_lig)
 
     options = {}
     options['ASLSTRINGS'] = []
@@ -132,16 +158,9 @@ def make_grid(infile: str, ligfile : str, pdbid: str) -> list:
     options['GLIDE_ZEXVOL'] = []
     options['GLIDECONS'] = False
     options['GLIDECONSATOMS'] = []
-    options['GLIDECONSNAMES'] = [] 
-
-    # options['GLIDECONSUSESYMATOMS'] = []
-    # options['GLIDERECEPTORSCALECHARGES'] = []
-    # options['GLIDERECEPTORSCALERADII'] = []
+    options['GLIDECONSNAMES'] = []
 
     options['GLIDEXVOLNAMES'] = []
-    
-    # options['GRID_CENTER'] = [0.0, 0.0, 0.0]
-    # options['GRID_CENTER_ASL'] = None
     
     options['HBOND_ACCEP_HALO'] = False
     options['HBOND_CONSTRAINTS'] = []
@@ -150,46 +169,41 @@ def make_grid(infile: str, ligfile : str, pdbid: str) -> list:
     options['HBOND_DONOR_HALO'] = False
     options['INNERBOX'] = [10, 10, 10]
 
-    # options['LIGAND_MOLECULE'] = None
     options['METAL_CONSTRAINTS'] = []
     options['METCOORD_CONSTRAINTS'] = []
     options['METCOORD_SITES'] = []
     options['NOE_CONSTRAINTS'] = []
     options['OUTERBOX'] = [30.0, 30.0, 30.0]
-    # options['PAIRDISTANCES'] = None
     options['PEPTIDE'] = False
     options['POSIT_CONSTRAINTS'] = []
     options['REC_MAECHARGES'] = False
     options['RECEP_CCUT'] = 0.25
 
     options['RECEP_VSCALE'] = 1.0
-    # options['REF_LIGAND_FILE'] = None
-    # options['SUBSTRATE_PENAL_FILE'] = ''
     options['USECOMPMAE'] = True
     options['USEFLEXASL'] = False
     options['USEFLEXMAE'] = False
 
-    options['RECEP_FILE'] = ligfile
+    options['RECEP_FILE'] = protein_no_lig
 
     grid_files = []
 
-    for n, element in enumerate(ligand_lists):
-        ligand_st = protein_system.extract(element)
-        # print(n, len(ligand_st.atom))
-        ligand_obj = analyze.Ligand(ligand_st)
-        lig_com = ligand_obj.centroid
-        # options['LIGAND_MOLECULE'] = (n+1)
-        # options['LIGAND_INDEX'] = (n+1)
+    if not os.path.isdir('grids'): os.makedirs('grids')
+
+    for n, com in enumerate(ligand_coms):
         options['JOBNAME'] = f'{pdbid}-site-{n+1}-grid'
-        options['GRIDFILE'] = os.path.join(grid_dir, f'{pdbid}-site-{n+1}-grid.zip')
-        # options['OUTPUTDIR'] = f'{pdbid}-ligand-{n+1}-grid'
-        options['GRID_CENTER'] = [lig_com[0], lig_com[1], lig_com[2]]
+        options['GRIDFILE'] = os.path.join('grids', f'{pdbid}-site-{n+1}-grid.zip')
+        options['GRID_CENTER'] = [com[0], com[1], com[2]]
         glide_job = glide.Gridgen(options)
 
-        inp_file = os.path.join(grid_dir, f'{pdbid}-site-{n+1}-grid.inp')
+        inp_file = os.path.join('grids', f'{pdbid}-site-{n+1}-grid.inp')
         glide_job.writeSimplified(inp_file)
 
         grid_files.append(options['GRIDFILE'])
+
+        if os.path.isfile(options['GRIDFILE']):
+            raise Exception(f"{options['GRIDFILE']} already exists from a previous Glide job. \
+                                Please remove the file to continue.")
 
         os.system(f'{schrodinger_path}/glide {inp_file}')
 
@@ -197,3 +211,6 @@ def make_grid(infile: str, ligfile : str, pdbid: str) -> list:
             time.sleep(1.0)
             
     return grid_files
+
+if __name__ == '__main__':
+    make_grid(sys.argv[1], sys.argv[2])

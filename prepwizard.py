@@ -5,18 +5,28 @@ import schrodinger.application.prepwizard2.prepare as prepare
 import schrodinger.application.prepwizard2.tasks as tasks
 
 def prepare_pdb(pdbid : str, retrieve_pdb : bool) -> list:
+    """
+    A calling function that runs the Schrodinger Maestro prepwizard on a raw pdb file
 
-    raw_pdb_path = os.path.join('proteins', pdbid, f'{pdbid}_raw.pdb')
+    Args:
+        pdbid (str) : The pdbid of the protein input file, located in pdbs/{pdbid}.pdb
+        retrieve_pdb (bool) : Whether or not to retrieve the pdb if pdbs/{pdbid}.pdb is not found
+
+    Returns:
+        prepared_files (list[str]) : A list of all the paths of the prepared protein files (all in under directory prepwizard)
+    """
+
+    pdb = os.path.join('pdbs', f'{pdbid}.pdb')
 
     # Read in the pdb
-    if os.path.isfile(f'{pdbid}.pdb'):
-        pdb_struct = structure.StructureReader.read(f'{pdbid}.pdb')
-        os.system(f'cp {pdbid}.pdb {raw_pdb_path}')
+    if os.path.isfile(pdb):
+        pdb_struct = structure.StructureReader.read(pdb)
     elif retrieve_pdb:
         pdb_struct = prepare.retrieve_and_read_pdb(pdbid)
-        os.system(f'cp {pdbid}.pdb {raw_pdb_path}')
+        if not os.path.isdir('pdbs'): os.makedirs('pdbs')
+        os.system(f'mv {pdbid}.pdb {pdb}')
     else:
-        raise Exception(f'{pdbid}.pdb is not found in the directory')
+        raise FileNotFoundError(f'The pdb input file {pdb} is not found')
     
     ### => Preprocessing Input <= ###
     ppi = tasks.PreprocessInput()
@@ -102,10 +112,14 @@ def prepare_pdb(pdbid : str, retrieve_pdb : bool) -> list:
     output_structs = ppwt.output.structs
 
     prepared_files = []
+    if not os.path.isdir('prepwizard'): os.makedirs('prepwizard')
 
     for n, st in enumerate(output_structs):
-        fname = os.path.join('proteins', pdbid, f'{pdbid}_prepared_struct_{n}.mae')
+        fname = os.path.join('prepwizard', f'{pdbid}_prepared_struct_{n}.mae')
         st.write(fname)
         prepared_files.append(fname)
 
     return prepared_files
+
+if __name__ == '__main__':
+    prepare_pdb(sys.argv[1], sys.argv[2])
