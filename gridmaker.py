@@ -8,8 +8,6 @@ import schrodinger.structutils.analyze as analyze
 import schrodinger.protein.findhets as findhets
 import schrodinger.application.glide.glide as glide
 
-schrodinger_path = os.environ.get('SCHRODINGER')
-
 keywords_list = """
 ASLSTRINGS                = string_list(default=list()) # ASL strings for receptor scaling
 CORE_FILTER               = boolean(default=False) # skip ligands that do not contain the core
@@ -98,6 +96,11 @@ def make_grid(protein_file : str, pdbid : str) -> list:
         grid_files (list[str]) : The filepath of the protein grid files
     """
 
+    schrodinger_path = os.environ.get('SCHRODINGER')
+    if schrodinger_path is None: raise Exception("Environment variable $SCHRODINGER is not set.")
+
+    proteinbase = os.path.splitext(os.path.split(protein_file)[-1])[0]
+
     protein_system = structure.StructureReader.read(protein_file)
     ligand_lists = findhets.find_hets(protein_system, include_metals=False, include_hydrogens=True)
 
@@ -116,8 +119,10 @@ def make_grid(protein_file : str, pdbid : str) -> list:
         atoms_to_remove.extend(ligand)
 
     protein_system.deleteAtoms(atoms_to_remove)
-    protein_no_lig = f'{os.path.splitext(protein_file)}_no_ligand.mae'
+    protein_no_lig = f'{os.path.splitext(protein_file)[0]}_no_ligand.mae'
     structure.StructureWriter.write(protein_system, protein_no_lig)
+
+    protein_no_lig = os.path.abspath(protein_no_lig)
 
     options = {}
     options['ASLSTRINGS'] = []
@@ -188,18 +193,21 @@ def make_grid(protein_file : str, pdbid : str) -> list:
 
     grid_files = []
 
-    if not os.path.isdir('grids'): os.makedirs('grids')
+    start_dir = os.getcwd()
+    work_dir = os.path.join('grids', pdbid)
+    if not os.path.isdir(work_dir): os.makedirs(work_dir)
+    os.chdir(work_dir)
 
     for n, com in enumerate(ligand_coms):
-        options['JOBNAME'] = f'{pdbid}-site-{n+1}-grid'
-        options['GRIDFILE'] = os.path.join('grids', f'{pdbid}-site-{n+1}-grid.zip')
+        options['JOBNAME'] = f'{proteinbase}_site_{n+1}_grid'
+        options['GRIDFILE'] = f'{proteinbase}_site_{n+1}_grid.zip'
         options['GRID_CENTER'] = [com[0], com[1], com[2]]
         glide_job = glide.Gridgen(options)
 
-        inp_file = os.path.join('grids', f'{pdbid}-site-{n+1}-grid.inp')
+        inp_file = f'{pdbid}-site-{n+1}-grid.inp'
         glide_job.writeSimplified(inp_file)
 
-        grid_files.append(options['GRIDFILE'])
+        grid_files.append(os.path.join(work_dir, options['GRIDFILE']))
 
         if os.path.isfile(options['GRIDFILE']):
             raise Exception(f"{options['GRIDFILE']} already exists from a previous Glide job. \
@@ -207,9 +215,9 @@ def make_grid(protein_file : str, pdbid : str) -> list:
 
         os.system(f'{schrodinger_path}/glide {inp_file}')
 
-        while not os.path.isfile(options['GRIDFILE']):
-            time.sleep(1.0)
-            
+        while not os.path.isfile(options['GRIDFILE']): time.sleep(1.0)
+    
+    os.chdir(start_dir)
     return grid_files
 
 if __name__ == '__main__':

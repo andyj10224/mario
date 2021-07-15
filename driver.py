@@ -33,12 +33,12 @@ def run_pipeline(pdbid : str, liginput : str, retrieve_pdb : bool, run_mmgbsa : 
 
     pose_files = []
     for gridfile in grid_files:
-        posefile = dk.dock(gridfile, prepared_ligands)
+        posefile = dk.dock(gridfile, prepared_ligands, f'{pdbid}_{liginput}')
         pose_files.append(posefile)
     
     if run_mmgbsa:
         for posefile in pose_files:
-            mmgbsa.run_mmgbsa(posefile)
+            mmgbsa.run_mmgbsa(posefile, f'{pdbid}_{liginput}')
 
     if run_apnet:
         warnings.warn('AP-Net-dG has not been interfaced with the pipeline yet. Code exiting.')

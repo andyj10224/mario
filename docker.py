@@ -6,8 +6,6 @@ import time
 import schrodinger.structure as structure
 import schrodinger.application.glide.glide as glide
 
-schrodinger_path = os.environ.get('SCHRODINGER')
-
 keywords_list = """
 AMIDE_MODE                  = option('penal', 'fixed', 'free', 'trans', 'generalized', default='generalized') # amide bond rotation behavior: "fixed", "free", "penal", "trans", "gen[eralized]"
 AMIDE_TRANS_ALL             = boolean(default=False) # include "nonstandard" amides in trans enforcement
@@ -196,19 +194,28 @@ WRITE_XP_DESC               = boolean(default=False) # generate data for visuali
 WRITEREPT                   = boolean(default=False) # write human-readable report file (.rept)
 """
 
-def dock(gridfile: str, ligandfile: str) -> str:
+def dock(gridfile: str, ligandfile: str, outdir : str) -> str:
     """
     Calls a Glide grid docking job given a gridfile and prepared ligands.
 
     Args:
         gridfile (str) : Path to the gridfile to run the docking on
         ligandfile (str) : Path to the ligandfile to run the docking on
+        outdir (str) : Where to save the docking outputs (in directory docking/{outdir})
 
     Returns:
         posefile (str) : Path to the final .maegz file of the docked poses
     """
+    schrodinger_path = os.environ.get('SCHRODINGER')
+    if schrodinger_path is None: raise Exception("Environment variable $SCHRODINGER is not set.")
 
-    if not os.path.isdir('docking'): os.makedirs('docking')
+    gridfile = os.path.abspath(gridfile)
+    ligandfile = os.path.abspath(ligandfile)
+
+    start_dir = os.getcwd()
+    work_dir = os.path.join('docking', outdir)
+    if not os.path.isdir(work_dir): os.makedirs(work_dir)
+    os.chdir(work_dir)
 
     options = {}
     options['GRIDFILE'] = gridfile
@@ -228,7 +235,7 @@ def dock(gridfile: str, ligandfile: str) -> str:
     # Base name of the ligand file
     ligbase = os.path.splitext(os.path.split(ligandfile)[-1])[0]
 
-    dock_input = os.path.join('docking', f'{gridbase}_{ligbase}_docking.inp')
+    dock_input = f'{gridbase}_{ligbase}_docking.inp'
     dock_job.writeSimplified(dock_input)
 
     os.system(f'{schrodinger_path}/glide {dock_input}')
@@ -238,10 +245,10 @@ def dock(gridfile: str, ligandfile: str) -> str:
     while not os.path.isfile(posefile):
         time.sleep(1.0)
     
-    os.system(f'mv {posefile} {os.path.join("docking", posefile)}')
-    posefile = os.path.join("docking", posefile)
+    posefile = os.path.join(work_dir, posefile)
 
+    os.chdir(start_dir)
     return posefile
 
 if __name__ == '__main__':
-    dock(sys.argv[1], sys.argv[2])
+    dock(sys.argv[1], sys.argv[2], sys.argv[3])

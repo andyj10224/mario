@@ -27,6 +27,11 @@ def prepare_pdb(pdbid : str, retrieve_pdb : bool) -> list:
         os.system(f'mv {pdbid}.pdb {pdb}')
     else:
         raise FileNotFoundError(f'The pdb input file {pdb} is not found')
+
+    start_dir = os.getcwd()
+    work_dir = os.path.join('prepwizard', pdbid)
+    if not os.path.isdir(work_dir): os.makedirs(work_dir)
+    os.chdir(work_dir)
     
     ### => Preprocessing Input <= ###
     ppi = tasks.PreprocessInput()
@@ -112,12 +117,14 @@ def prepare_pdb(pdbid : str, retrieve_pdb : bool) -> list:
     output_structs = ppwt.output.structs
 
     prepared_files = []
-    if not os.path.isdir('prepwizard'): os.makedirs('prepwizard')
 
     for n, st in enumerate(output_structs):
-        fname = os.path.join('prepwizard', f'{pdbid}_prepared_struct_{n}.mae')
+        fname = f'{pdbid}_prepared_struct_{n+1}.mae'
         st.write(fname)
-        prepared_files.append(fname)
+        full_path = os.path.join(work_dir, fname)
+        prepared_files.append(full_path)
+
+    os.chdir(start_dir)
 
     return prepared_files
 

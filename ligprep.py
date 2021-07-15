@@ -21,6 +21,13 @@ def prepare_ligands(input : str) -> str:
     if not os.path.isfile(ligands):
         raise FileNotFoundError(f"The ligand input file {ligands} does not exist!")
 
+    ligands = os.path.abspath(ligands)
+
+    start_dir = os.getcwd()
+    work_dir = os.path.join('ligprep', input)
+    if not os.path.isdir(work_dir): os.makedirs(work_dir)
+    os.chdir(work_dir)
+
     lps = ligprep.LigPrepStage("Ligprep")
 
     lps['UNIQUEFIELD'] = "NONE" # Field to identify unique compound by
@@ -56,8 +63,7 @@ def prepare_ligands(input : str) -> str:
     lps.setInput(1, 'INPUT1', ligandsobj)
 
     # Where to save output
-    if not os.path.isdir('ligprep'): os.makedirs('ligprep')
-    output_path = os.path.join('ligprep', f'{input}_prepared.maegz')
+    output_file = f'{input}_prepared.maegz'
 
     lps.setOutputName(1, f'{input}_prepared')
 
@@ -65,8 +71,11 @@ def prepare_ligands(input : str) -> str:
     lps.run()
 
     prepfile = f'{input}_prepared-001.maegz'
-    os.system(f'mv {prepfile} {output_path}')
+    os.system(f'mv {prepfile} {output_file}')
 
+    os.chdir(start_dir)
+
+    output_path = os.path.join(work_dir, output_file)
     return output_path
 
 if __name__ == '__main__':
