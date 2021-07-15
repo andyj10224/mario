@@ -204,7 +204,7 @@ def make_grid(protein_file : str, pdbid : str) -> list:
         options['GRID_CENTER'] = [com[0], com[1], com[2]]
         glide_job = glide.Gridgen(options)
 
-        inp_file = f'{pdbid}-site-{n+1}-grid.inp'
+        inp_file = f'{proteinbase}_site_{n+1}_grid.inp'
         glide_job.writeSimplified(inp_file)
 
         grid_files.append(os.path.join(work_dir, options['GRIDFILE']))
