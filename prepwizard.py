@@ -4,7 +4,7 @@ import schrodinger.structure as structure
 import schrodinger.application.prepwizard2.prepare as prepare
 import schrodinger.application.prepwizard2.tasks as tasks
 
-def prepare_pdb(pdbid : str, retrieve_pdb : bool) -> list:
+def prepare_pdb(pdbid, retrieve_pdb):
     """
     A calling function that runs the Schrodinger Maestro prepwizard on a raw pdb file
 

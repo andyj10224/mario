@@ -84,7 +84,7 @@ USEFLEXASL                = boolean(default=False) # specify movable atoms by AS
 USEFLEXMAE                = boolean(default=False) # specify movable atoms by property in input .mae file
 """
 
-def make_grid(protein_file : str, pdbid : str) -> list:
+def make_grid(protein_file, pdbid):
     """
     The function used to call the pipeline, the central information flow hub.
 
@@ -218,6 +218,7 @@ def make_grid(protein_file : str, pdbid : str) -> list:
         while not os.path.isfile(options['GRIDFILE']): time.sleep(1.0)
     
     os.chdir(start_dir)
+
     return grid_files
 
 if __name__ == '__main__':

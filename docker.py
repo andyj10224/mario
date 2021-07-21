@@ -194,7 +194,7 @@ WRITE_XP_DESC               = boolean(default=False) # generate data for visuali
 WRITEREPT                   = boolean(default=False) # write human-readable report file (.rept)
 """
 
-def dock(gridfile: str, ligandfile: str, outdir : str) -> str:
+def dock(gridfile, ligandfile, outdir):
     """
     Calls a Glide grid docking job given a gridfile and prepared ligands.
 
@@ -238,7 +238,7 @@ def dock(gridfile: str, ligandfile: str, outdir : str) -> str:
     dock_input = f'{gridbase}_{ligbase}_docking.inp'
     dock_job.writeSimplified(dock_input)
 
-    os.system(f'{schrodinger_path}/glide {dock_input}')
+    os.system(f'{schrodinger_path}/glide {dock_input} -NSTRUCTS 2')
 
     posefile = f'{gridbase}_{ligbase}_docking_pv.maegz'
 
@@ -248,6 +248,7 @@ def dock(gridfile: str, ligandfile: str, outdir : str) -> str:
     posefile = os.path.join(work_dir, posefile)
 
     os.chdir(start_dir)
+
     return posefile
 
 if __name__ == '__main__':

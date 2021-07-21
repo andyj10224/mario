@@ -5,7 +5,7 @@ import schrodinger.pipeline.stages.ligprep as ligprep
 import schrodinger.pipeline.pipeio as pipeio
 
 
-def prepare_ligands(input : str) -> str:
+def prepare_ligands(input):
     """
     A calling function that runs the Schrodinger Maestro ligprep on a raw, unprepared ligand file
 
@@ -76,6 +76,7 @@ def prepare_ligands(input : str) -> str:
     os.chdir(start_dir)
 
     output_path = os.path.join(work_dir, output_file)
+
     return output_path
 
 if __name__ == '__main__':

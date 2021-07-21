@@ -5,7 +5,7 @@ import schrodinger.structure as structure
 import schrodinger.pipeline.stages.prime as prime
 import schrodinger.pipeline.pipeio as pipeio
 
-def run_mmgbsa(posefile : str, outdir : str) -> None:
+def run_mmgbsa(posefile, outdir):
     """
     Run MMGBSA on a pose file performed from Glide ligand docking
 
