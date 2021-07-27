@@ -1,7 +1,4 @@
-import subprocess
-import sys
-import os
-import time
+import subprocess, sys, os, argparse
 
 import schrodinger.structure as structure
 import schrodinger.application.glide.glide as glide
@@ -194,23 +191,40 @@ WRITE_XP_DESC               = boolean(default=False) # generate data for visuali
 WRITEREPT                   = boolean(default=False) # write human-readable report file (.rept)
 """
 
-def dock(gridfile, ligandfile, outdir):
-    """
-    Calls a Glide grid docking job given a gridfile and prepared ligands.
+if __name__ == '__main__':
 
-    Args:
-        gridfile (str) : Path to the gridfile to run the docking on
-        ligandfile (str) : Path to the ligandfile to run the docking on
-        outdir (str) : Where to save the docking outputs (in directory docking/{outdir})
+     ## ==> Read in the arguments <== ##
 
-    Returns:
-        posefile (str) : Path to the final .maegz file of the docked poses
-    """
+    parser = argparse.ArgumentParser(description='Runs a Schrodinger Glide Docking Job on prepared ligands and a grid')
+
+    parser.add_argument('gridfile', help='[string] The path to the gridfile')
+    parser.add_argument('ligandfile', help='[string] The path to the ligand set that is being docked')
+    parser.add_argument('output_dir', help='[string] The name of the directory to store the Docking job, stored as ./docking/{output_dir}')
+
+    parser.add_argument('--precision', help='[string] Which level of precision to run the docking job (HTVS, SP, or XP)', default='SP')
+    parser.add_argument('--refligand', help='[string] The path to the reference ligand (for constraints)', default=None)
+    parser.add_argument('--constraint_type', help='[string] The type of constraint to use for the docking (NONE, CORE, or SHAPE)', default='CORE')
+    parser.add_argument('--ncore', help='[int] Number of CPU cores to run the job on', default=1)
+
+    args = parser.parse_args(sys.argv[1:])
+
+    gridfile = args.gridfile
+    ligandfile = args.ligandfile
+    outdir = args.output_dir
+
+    precision = args.precision.upper()
+    refligand = args.refligand
+    constraint_type = args.constraint_type.upper()
+    ncore = args.ncore
+
+    ## => Run the docking <= ##
+
     schrodinger_path = os.environ.get('SCHRODINGER')
     if schrodinger_path is None: raise Exception("Environment variable $SCHRODINGER is not set.")
 
     gridfile = os.path.abspath(gridfile)
     ligandfile = os.path.abspath(ligandfile)
+    refligand = os.path.abspath(refligand)
 
     start_dir = os.getcwd()
     work_dir = os.path.join('docking', outdir)
@@ -218,9 +232,36 @@ def dock(gridfile, ligandfile, outdir):
     os.chdir(work_dir)
 
     options = {}
+
+    if constraint_type == 'CORE':
+        if refligand == None:
+            raise Exception("The reference ligand file was not set for running CORE Constraint")
+
+        options['CORE_RESTRAIN'] = True
+        options['CORE_POS_MAX_RMSD'] = 0.10
+        options['CORE_DEFINITION'] = "mcssmarts"
+        options['CORE_FILTER'] = False
+        options['USE_REF_LIGAND'] = True
+        options['REF_LIGAND_FILE'] = refligand
+    
+    elif constraint_type == 'SHAPE':
+        if refligand == None:
+            raise Exception("The reference ligand file was not set for running SHAPE Constraint")
+
+        options['SHAPE_RESTRAIN'] = True
+        options['USE_REF_LIGAND'] = True
+        options['SHAPE_REF_LIGAND_FILE'] = refligand
+        options['REF_LIGAND_FILE'] = refligand
+
+    elif constraint_type != 'NONE':
+        raise Exception(f"The constraint {constraint_type} is not an available option!")
+
+    if precision not in ['HTVS', 'SP', 'XP']:
+        raise Exception(f"Precision type {precision} is not an available option!")
+
     options['GRIDFILE'] = gridfile
     options['LIGANDFILE'] = ligandfile
-    options['PRECISION'] = 'SP'
+    options['PRECISION'] = precision
     options['SAMPLE_N_INVERSIONS'] = True
     options['SAMPLE_RINGS'] = True
     options['AMIDE_MODE'] = 'penal'
@@ -230,26 +271,9 @@ def dock(gridfile, ligandfile, outdir):
 
     dock_job = glide.Dock(options)
 
-    # Base name of the grid file
-    gridbase = os.path.splitext(os.path.split(gridfile)[-1])[0]
-    # Base name of the ligand file
-    ligbase = os.path.splitext(os.path.split(ligandfile)[-1])[0]
-
-    dock_input = f'{gridbase}_{ligbase}_docking.inp'
+    dock_input = 'dockjob.inp'
     dock_job.writeSimplified(dock_input)
 
-    os.system(f'{schrodinger_path}/glide {dock_input} -NSTRUCTS 2')
-
-    posefile = f'{gridbase}_{ligbase}_docking_pv.maegz'
-
-    while not os.path.isfile(posefile):
-        time.sleep(1.0)
-    
-    posefile = os.path.join(work_dir, posefile)
+    subprocess.Popen([f'{schrodinger_path}/glide', dock_input, '-WAIT', '-NOJOBID', '-HOST', f'localhost:{ncore}']).wait()
 
     os.chdir(start_dir)
-
-    return posefile
-
-if __name__ == '__main__':
-    dock(sys.argv[1], sys.argv[2], sys.argv[3])

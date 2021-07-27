@@ -1,20 +1,23 @@
-import os, sys
+import os, sys, argparse, subprocess
 
 import schrodinger.structure as structure
 import schrodinger.pipeline.stages.ligprep as ligprep
 import schrodinger.pipeline.pipeio as pipeio
 
+if __name__ == '__main__':
 
-def prepare_ligands(input):
-    """
-    A calling function that runs the Schrodinger Maestro ligprep on a raw, unprepared ligand file
+    ## ==> Read in the arguments <== ##
 
-    Args:
-        input (str) : The name of the ligand input file, located in ligands/{input}.sdf
+    parser = argparse.ArgumentParser(description='Runs a Schrodinger LigPrep Job on a Set of Ligands')
 
-    Returns: 
-        output_path (str) : The file path of the prepared ligand after ligprep has finished (located in ligprep dir)
-    """
+    parser.add_argument('ligands', help='[string] The name of the set of ligands, located at ligands/{ligands}.pdb')
+    parser.add_argument('--ncore', help='[int] Number of CPU cores to run the job on', default=1)
+
+    args = parser.parse_args(sys.argv[1:])
+    input = args.ligands
+    ncore = int(args.ncore)
+
+    ## ==> Run the Ligprep Job <== ##
 
     ligands = os.path.join('ligands', f'{input}.sdf')
 
@@ -28,6 +31,17 @@ def prepare_ligands(input):
     if not os.path.isdir(work_dir): os.makedirs(work_dir)
     os.chdir(work_dir)
 
+    schrodinger_path = os.environ.get('SCHRODINGER')
+    if schrodinger_path is None: raise Exception("Environment variable $SCHRODINGER is not set.")
+
+    # Where to save output
+    output_file = f'{input}_prepared.maegz'
+
+    subprocess.Popen([f'{schrodinger_path}/ligprep', '-isd', ligands, '-omae', output_file, '-epik', '-ph', '7.4', '-pht', '0.1', '-HOST', f'localhost:{ncore}', '-WAIT']).wait()
+    
+    os.chdir(start_dir)
+
+    """
     lps = ligprep.LigPrepStage("Ligprep")
 
     lps['UNIQUEFIELD'] = "NONE" # Field to identify unique compound by
@@ -58,26 +72,22 @@ def prepare_ligands(input):
     lps['OUTFORMAT'] = "mae"
 
     # Input Ligand Objects
-    infile_list = [ligands]
-    ligandsobj = pipeio.Structures(infile_list)
+    ligandsobj = pipeio.Structures([ligands])
     lps.setInput(1, 'INPUT1', ligandsobj)
+
+    # Write the input file
+    input_files = lps.getInput(1).getFiles()
+    print(input_files[0])
 
     # Where to save output
     output_file = f'{input}_prepared.maegz'
 
     lps.setOutputName(1, f'{input}_prepared')
 
-    # Outputs (dictionary of output objects)
+    # Run the Stage
     lps.run()
 
     prepfile = f'{input}_prepared-001.maegz'
     os.system(f'mv {prepfile} {output_file}')
-
     os.chdir(start_dir)
-
-    output_path = os.path.join(work_dir, output_file)
-
-    return output_path
-
-if __name__ == '__main__':
-    prepare_ligands(sys.argv[1])
+    """

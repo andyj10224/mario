@@ -1,14 +1,11 @@
-import subprocess
-import sys
-import os
-import time
+import subprocess, sys, os, time, argparse
 
 import schrodinger.structure as structure
 import schrodinger.structutils.analyze as analyze
 import schrodinger.protein.findhets as findhets
 import schrodinger.application.glide.glide as glide
 
-keywords_list = """
+keywords = """
 ASLSTRINGS                = string_list(default=list()) # ASL strings for receptor scaling
 CORE_FILTER               = boolean(default=False) # skip ligands that do not contain the core
 CV_CUTOFF                 = float(default=0.0) # Coulomb-van der Waals energy cutoff used for final filtering
@@ -84,22 +81,32 @@ USEFLEXASL                = boolean(default=False) # specify movable atoms by AS
 USEFLEXMAE                = boolean(default=False) # specify movable atoms by property in input .mae file
 """
 
-def make_grid(protein_file, pdbid):
-    """
-    The function used to call the pipeline, the central information flow hub.
+if __name__ == '__main__':
 
-    Args:
-        protein_file (str) : The filepath of the prepared protein, located in prepwizard directory
-        pdbid (str) : The pdbid of the protein we are working with (to help with naming and indexing)
+    ## ==> Read in the arguments <== ##
 
-    Returns:
-        grid_files (list[str]) : The filepath of the protein grid files
-    """
+    parser = argparse.ArgumentParser(description='Runs a Schrodinger Glide Gridgen Job on prepared ligands')
+
+    parser.add_argument('protein_file', help='[string] The path to the prepared protein file')
+    parser.add_argument('pdbid', help='[string] The pdbid of the protein being prepared')
+
+    parser.add_argument('--ncore', help='[int] Number of CPU cores to run the job on', default=1)
+
+    args = parser.parse_args(sys.argv[1:])
+
+    protein_file = args.protein_file
+    pdbid = args.pdbid
+    ncore = args.ncore
+
+    ## ==> Run the Gridgen Docking Job <== ##
 
     schrodinger_path = os.environ.get('SCHRODINGER')
     if schrodinger_path is None: raise Exception("Environment variable $SCHRODINGER is not set.")
 
-    proteinbase = os.path.splitext(os.path.split(protein_file)[-1])[0]
+    # Make the directory to hold the reference ligands
+    ref_dir = os.path.dirname(protein_file)
+    # Base name of the protein
+    proteinbase = os.path.splitext(os.path.basename(protein_file))[0]
 
     protein_system = structure.StructureReader.read(protein_file)
     ligand_lists = findhets.find_hets(protein_system, include_metals=False, include_hydrogens=True)
@@ -111,6 +118,8 @@ def make_grid(protein_file, pdbid):
         ligand_st = protein_system.extract(atoms)
         ligand_obj = analyze.Ligand(ligand_st)
         ligand_coms.append(ligand_obj.centroid)
+        ref_ligand_path = os.path.join(ref_dir, f'{proteinbase}_site_{n+1}_ligand.mae')
+        structure.StructureWriter.write(ligand_st, ref_ligand_path)
 
     # Remove the ligands from the protein (and create the receptor file)
     atoms_to_remove = []
@@ -119,7 +128,7 @@ def make_grid(protein_file, pdbid):
         atoms_to_remove.extend(ligand)
 
     protein_system.deleteAtoms(atoms_to_remove)
-    protein_no_lig = f'{os.path.splitext(protein_file)[0]}_no_ligand.mae'
+    protein_no_lig = os.path.join(ref_dir, f'{proteinbase}_no_ligand.mae')
     structure.StructureWriter.write(protein_system, protein_no_lig)
 
     protein_no_lig = os.path.abspath(protein_no_lig)
@@ -164,16 +173,13 @@ def make_grid(protein_file, pdbid):
     options['GLIDECONS'] = False
     options['GLIDECONSATOMS'] = []
     options['GLIDECONSNAMES'] = []
-
     options['GLIDEXVOLNAMES'] = []
-    
     options['HBOND_ACCEP_HALO'] = False
     options['HBOND_CONSTRAINTS'] = []
     options['HBOND_DONOR_AROMH'] = False
     options['HBOND_DONOR_AROMH_CHARGE'] = 0.0
     options['HBOND_DONOR_HALO'] = False
     options['INNERBOX'] = [10, 10, 10]
-
     options['METAL_CONSTRAINTS'] = []
     options['METCOORD_CONSTRAINTS'] = []
     options['METCOORD_SITES'] = []
@@ -183,43 +189,27 @@ def make_grid(protein_file, pdbid):
     options['POSIT_CONSTRAINTS'] = []
     options['REC_MAECHARGES'] = False
     options['RECEP_CCUT'] = 0.25
-
     options['RECEP_VSCALE'] = 1.0
     options['USECOMPMAE'] = True
     options['USEFLEXASL'] = False
     options['USEFLEXMAE'] = False
-
     options['RECEP_FILE'] = protein_no_lig
-
-    grid_files = []
 
     start_dir = os.getcwd()
     work_dir = os.path.join('grids', pdbid)
     if not os.path.isdir(work_dir): os.makedirs(work_dir)
     os.chdir(work_dir)
 
+
     for n, com in enumerate(ligand_coms):
-        options['JOBNAME'] = f'{proteinbase}_site_{n+1}_grid'
-        options['GRIDFILE'] = f'{proteinbase}_site_{n+1}_grid.zip'
+        options['JOBNAME'] = f'{proteinbase}_site_{n+1}'
+        options['GRIDFILE'] = f'{proteinbase}_site_{n+1}.zip'
         options['GRID_CENTER'] = [com[0], com[1], com[2]]
         glide_job = glide.Gridgen(options)
 
-        inp_file = f'{proteinbase}_site_{n+1}_grid.inp'
+        inp_file = f'{proteinbase}_site_{n+1}.inp'
         glide_job.writeSimplified(inp_file)
 
-        grid_files.append(os.path.join(work_dir, options['GRIDFILE']))
-
-        if os.path.isfile(options['GRIDFILE']):
-            raise Exception(f"{options['GRIDFILE']} already exists from a previous Glide job. \
-                                Please remove the file to continue.")
-
-        os.system(f'{schrodinger_path}/glide {inp_file}')
-
-        while not os.path.isfile(options['GRIDFILE']): time.sleep(1.0)
+        subprocess.Popen([f'{schrodinger_path}/glide', inp_file, '-WAIT', '-NOJOBID', '-HOST', f'localhost:{ncore}']).wait()
     
     os.chdir(start_dir)
-
-    return grid_files
-
-if __name__ == '__main__':
-    make_grid(sys.argv[1], sys.argv[2])

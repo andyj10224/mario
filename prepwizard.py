@@ -1,20 +1,25 @@
-import sys, os
+import sys, os, argparse, shutil
 
 import schrodinger.structure as structure
+import schrodinger.protein.annotation as annotation
 import schrodinger.application.prepwizard2.prepare as prepare
 import schrodinger.application.prepwizard2.tasks as tasks
+import schrodinger.models.parameters as parameters
 
-def prepare_pdb(pdbid, retrieve_pdb):
-    """
-    A calling function that runs the Schrodinger Maestro prepwizard on a raw pdb file
+if __name__ == '__main__':
 
-    Args:
-        pdbid (str) : The pdbid of the protein input file, located in pdbs/{pdbid}.pdb
-        retrieve_pdb (bool) : Whether or not to retrieve the pdb if pdbs/{pdbid}.pdb is not found
+    ## ==> Read in the arguments <== ##
 
-    Returns:
-        prepared_files (list[str]) : A list of all the paths of the prepared protein files (all in under directory prepwizard)
-    """
+    parser = argparse.ArgumentParser(description='Runs a Schrodinger Prepwizard Job on a Raw Protein System')
+
+    parser.add_argument('pdbid', help='[string] The pdbid for the protein, located at pdbs/{pdb}.pdb')
+    parser.add_argument('--retrieve_pdb', help='[bool] Get the pdb online if the file is not in directory?', default=False, action='store_true')
+
+    args = parser.parse_args(sys.argv[1:])
+    pdbid = args.pdbid
+    retrieve_pdb = args.retrieve_pdb
+
+    ## ==> Run Prepwizard <== ##
 
     pdb = os.path.join('pdbs', f'{pdbid}.pdb')
 
@@ -24,7 +29,7 @@ def prepare_pdb(pdbid, retrieve_pdb):
     elif retrieve_pdb:
         pdb_struct = prepare.retrieve_and_read_pdb(pdbid)
         if not os.path.isdir('pdbs'): os.makedirs('pdbs')
-        os.system(f'mv {pdbid}.pdb {pdb}')
+        shutil.move(f'{pdbid}.pdb', f'{pdb}')
     else:
         raise FileNotFoundError(f'The pdb input file {pdb} is not found')
 
@@ -38,7 +43,7 @@ def prepare_pdb(pdbid, retrieve_pdb):
     ppi.struct = pdb_struct
 
     # Preprocess Options
-    # ppi.reference_structure = None
+    # ppi.reference_structure = parameters.NonParamAttribute()
     ppi.preprocess_delete_far_waters = True
     ppi.preprocess_watdist = 5.0
     ppi.treat_metals = True
@@ -50,12 +55,12 @@ def prepare_pdb(pdbid, retrieve_pdb):
     ppi.treat_disulfides = True
     ppi.treat_glycosylation = False
     ppi.treat_palmitoylation = False
-    # ppi.annotate_antibodies = True
-    # ppi.antibody_cdr_scheme = annotation.DEFAULT_ANTIBODY_SCHEME
+    ppi.annotate_antibodies = True
+    ppi.antibody_cdr_scheme = annotation.DEFAULT_ANTIBODY_SCHEME
     ppi.selenomethionines = False
     ppi.fillsidechains = True
     ppi.fillloops = True
-    # ppi.custom_fasta_file = None
+    # ppi.custom_fasta_file = parameters.NonParamAttribute()
     ppi.cap_termini = True
     ppi.run_epik = True
     ppi.idealize_hydrogen_tf = True
@@ -82,8 +87,8 @@ def prepare_pdb(pdbid, retrieve_pdb):
     ohbi.label_pkas = False
     ohbi.force_list = []
     ohbi.minimize_adj_h = False
-    # ohbi.protassign_number_sequential_cycles = None
-    # ohbi.protassign_max_cluster_size = None
+    # ohbi.protassign_number_sequential_cycles = parameters.NonParamAttribute()
+    # ohbi.protassign_max_cluster_size = parameters.NonParamAttribute()
     ohbi.idealize_hydrogen_tf = True
 
     ### => Cleanup/Force-Field Options <= ###
@@ -116,17 +121,8 @@ def prepare_pdb(pdbid, retrieve_pdb):
     
     output_structs = ppwt.output.structs
 
-    prepared_files = []
-
     for n, st in enumerate(output_structs):
-        fname = f'{pdbid}_prepared_struct_{n+1}.mae'
+        fname = f'struct_{n+1}.mae'
         st.write(fname)
-        full_path = os.path.join(work_dir, fname)
-        prepared_files.append(full_path)
 
     os.chdir(start_dir)
-
-    return prepared_files
-
-if __name__ == '__main__':
-    prepare_pdb(sys.argv[1], sys.argv[2])

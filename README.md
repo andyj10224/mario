@@ -1,13 +1,14 @@
 # MARIO
 
-MARIO is a Schrodinger software wrapper that allows one to easily get geometries of protein-ligand docking poses given a pdb code and a ligand geometry file (sdf).
+MARIO is a Drug Discovery Software Pipeline that integrates many different types of software, allowing the automation of the data transfer pathway from raw data to free energy calculations.
 
 ## Using the code
 
-Having the Schrodinger Software is a prerequisite. Call this code
-`$SCHRODINGER/run driver.py pdbid ligandfile`
+Having the Schrodinger Software is a prerequisite. The path to the Schrodinger suite must be set as an environmental variable `export SCHRODINGER="/path/to/schrodinger/suite"`
 
-IMPORTANT: Make sure that the pdb file is found in the `pdbs` directory as `pdbs/{pdbid}.pdb`, and the ligand file is found in the `ligands` directory as `ligands/{ligandfile}.sdf`
+Call this code `python driver.py pdbid ligandfile` to run the pipeline.
+
+IMPORTANT: Make sure that the pdb file is found in the `pdbs` directory as `pdbs/{pdbid}.pdb`, and the ligand file is found in the `ligands` directory as `ligands/{ligandfile}.sdf`.
 
 Example call (provided in the directory), `$SCHRODINGER/run driver.py 4mxo S985`
 
