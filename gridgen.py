@@ -210,6 +210,6 @@ if __name__ == '__main__':
         inp_file = f'{proteinbase}_site_{n+1}.inp'
         glide_job.writeSimplified(inp_file)
 
-        subprocess.Popen([f'{schrodinger_path}/glide', inp_file, '-WAIT', '-NOJOBID', '-HOST', f'localhost:{ncore}']).wait()
+        subprocess.Popen([f'{schrodinger_path}/glide', inp_file, '-WAIT', '-HOST', f'localhost:{ncore}']).wait()
     
     os.chdir(start_dir)

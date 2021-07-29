@@ -274,6 +274,6 @@ if __name__ == '__main__':
     dock_input = 'dockjob.inp'
     dock_job.writeSimplified(dock_input)
 
-    subprocess.Popen([f'{schrodinger_path}/glide', dock_input, '-WAIT', '-NOJOBID', '-HOST', f'localhost:{ncore}']).wait()
+    subprocess.Popen([f'{schrodinger_path}/glide', dock_input, '-WAIT', '-HOST', f'localhost:{ncore}']).wait()
 
     os.chdir(start_dir)
