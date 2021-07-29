@@ -31,8 +31,13 @@ Example call (provided in the directory), `python driver.py 4mxo S985`
 For more information on how to run the driver or any of the processes:
 
 Driver => `python driver.py -h`
+
 Prepwizard => `SCHRODINGER/run prepwizard.py -h`
+
 Ligprep => `SCHRODINGER/run ligprep.py -h` or `python ligprep.py -h`
+
 Gridgen => `SCHRODINGER/run gridgen.py -h`
+
 Docking => `SCHRODINGER/run dock.py -h`
+
 MMGBSA => `SCHRODINGER/run mmgbsa.py -h` or `python mmgbsa.py -h`
