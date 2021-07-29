@@ -203,7 +203,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--precision', help='[string] Which level of precision to run the docking job (HTVS, SP, or XP)', default='SP')
     parser.add_argument('--refligand', help='[string] The path to the reference ligand (for constraints)', default=None)
-    parser.add_argument('--constraint_type', help='[string] The type of constraint to use for the docking (NONE, CORE, or SHAPE)', default='CORE')
+    parser.add_argument('--constraint_type', help='[string] The type of constraint to use for the docking (NONE, CORE, or SHAPE)', default='NONE')
     parser.add_argument('--ncore', help='[int] Number of CPU cores to run the job on', default=1)
 
     args = parser.parse_args(sys.argv[1:])

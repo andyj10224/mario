@@ -31,24 +31,3 @@ if __name__ == '__main__':
     os.chdir(work_dir)
 
     subprocess.Popen([f'{schrodinger_path}/prime_mmgbsa', posefile, '-out_type', 'PV', '-job_type', 'ENERGY', '-HOST', f'localhost:{ncore}', '-WAIT']).wait()
-
-    """
-    mms = prime.MMGBSAStage("MMGBSA")
-
-    mms['USE_MAE_CHARGES'] = False # = boolean(default=False) # Whether to use atom partial charges in input Maestro file in simulations
-    mms['OUTPUT_LIG_STRAING'] = False # = boolean(default=False) # Whether to output an estimate of the ligand strain energy
-    mms['USE_MEMBRANE'] = False # = boolean(default=False) # Use Prime implicit membrane model in protein and complex simulations
-
-    # Set the MMGBSA number of cores
-    mms.setJobOptions(njobs=ncore)
-
-    # Input Ligand Objects
-    structobj = pipeio.Structures([posefile])
-    mms.setInput(1, 'INPUT1', structobj)
-
-    # Outputs (dictionary of output objects)
-    mms.setOutputName(1, "MMGBSA")
-    mms.run()
-
-    os.chdir(start_dir)
-    """

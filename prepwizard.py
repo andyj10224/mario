@@ -4,7 +4,6 @@ import schrodinger.structure as structure
 import schrodinger.protein.annotation as annotation
 import schrodinger.application.prepwizard2.prepare as prepare
 import schrodinger.application.prepwizard2.tasks as tasks
-import schrodinger.models.parameters as parameters
 
 if __name__ == '__main__':
 
