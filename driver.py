@@ -2,12 +2,12 @@ import sys, os, argparse, warnings, time
 from subprocess import Popen
 
 def start_timer(name):
-    print(f'\tStarting {name} Job...\n\n')
+    print(f'\tStarting {name} Job...\n')
     return time.time()
 
 def end_timer(name, start_time):
     elapsed_time = time.time() - start_time
-    print(f'\t{name} Job finished...\n\tTime{elapsed_time:.2f}\n\n')
+    print(f'\t{name} Job finished...\n\tTime: {elapsed_time:.2f} seconds\n')
 
 if __name__ == '__main__':
 
@@ -58,6 +58,10 @@ if __name__ == '__main__':
     ligprep_start = start_timer('Ligprep')
     ligprep_job = Popen([f'{schrodinger_path}/run', 'ligprep.py', ligands, '--ncore', str(ligprep_cores)])
 
+    # Wait for ligprep to finish
+    ligprep_job.wait()
+    end_timer('Ligprep', ligprep_start)
+
     # Wait for prepwizard to finish
     if ncore != 1:
         prepwizard_job.wait()
@@ -69,10 +73,6 @@ if __name__ == '__main__':
     for entry in os.scandir(prepwizard_dir):
         if entry.path.endswith(".mae"):
             prepared_proteins.append(entry.path)
-
-    # Wait for ligprep to finish
-    ligprep_job.wait()
-    end_timer('Ligprep', ligprep_start)
 
     # Get the ligand file
     prepligfile = ""

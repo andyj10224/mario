@@ -1,5 +1,4 @@
 import sys, os, argparse, shutil
-
 import schrodinger.structure as structure
 import schrodinger.protein.annotation as annotation
 import schrodinger.application.prepwizard2.prepare as prepare

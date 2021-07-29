@@ -1,9 +1,5 @@
 import os, sys, argparse, subprocess
 
-import schrodinger.structure as structure
-import schrodinger.pipeline.stages.ligprep as ligprep
-import schrodinger.pipeline.pipeio as pipeio
-
 if __name__ == '__main__':
 
     ## ==> Read in the arguments <== ##

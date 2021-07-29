@@ -1,8 +1,5 @@
 import sys, os, argparse, subprocess
 
-import schrodinger.pipeline.stages.prime as prime
-import schrodinger.pipeline.pipeio as pipeio
-
 if __name__ == '__main__':
     ## ==> Read in the arguments <== ##
 
@@ -22,8 +19,9 @@ if __name__ == '__main__':
     outdir = args.output_dir
     ncore = args.ncore
 
+    ## => Run MMGBSA <= ##
+
     posefile = os.path.abspath(posefile)
-    # posebase = os.path.splitext(os.path.split(posefile)[-1])[0]
 
     start_dir = os.getcwd()
     work_dir = os.path.join('mmgbsa', outdir)
