@@ -3,35 +3,36 @@ import helper.pare as pare
 import schrodinger.structure as structure
 import schrodinger.application.glide.glide as glide
 
-def pocketeer(posefile, pocketfile):
+def pocketeer(posefile, pocketfile, rcutoff=4.0):
     """
     Given a posefile, make another posefile containing only the protein pocket (with all ligands)
 
     Parameters:
-        posefile: Name (or path) of the file containing the docked poses
-        pocketfile: Name (or path) of the file containing the pocket binding sites
+        posefile: [str] Name (or path) of the file containing the docked poses
+        pocketfile: [str] Name (or path) of the file containing the pocket binding sites
+        rcutoff: [float] The cutoff distance from the ligand to define the protein binding pocket
     
     Returns:
         None
     """
 
-    ligands_to_add = []
-    for n, st in enumerate(structure.StructureReader(posefile)):
-        if (n == 0):
-            protein_st = st
-        else:
-            ligands_to_add.append(st)
-            if (n == 1):
-                ligand_st = st
-            else:
-                ligand_st.extend(st)
+    structures = []
+    for st in structure.StructureReader(posefile):
+        structures.append(st)
 
-    fa_set, h_set = pare.pareProteinWithinDistance(protein_st, ligand_st, dmax=4.0)
-    pocket = pare.pareMinimize(fa_set, h_set)
+    protein = pare.fragment(structures[0], protein_treatment='sidechain')
+    ligands = structures[1:]
+
+    merged_ligands = ligands[0].copy()
+    for ligand in ligands[1:]:
+        merged_ligands.extend(ligand)
+
+    fa_set, h_set = pare.pareProteinWithinDistance(protein, merged_ligands, dmax=rcutoff)
+    pocket, renumbering = pare.pareMinimize(structures[0], fa_set, h_set)
 
     writer = structure.StructureWriter(pocketfile)
     writer.append(pocket)
-    writer.extend(ligands_to_add)
+    writer.extend(ligands)
     writer.close()
 
 if __name__ == '__main__':
