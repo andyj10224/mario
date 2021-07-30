@@ -116,7 +116,7 @@ if __name__ == '__main__':
     if run_mmgbsa:
         mmgbsa_start = start_timer("MMGBSA")
         for posefile in pose_files:
-            basename = os.path.splitext(os.path.split(posefile)[-1])[0]
+            basename = posefile.split('/')[-2]
             Popen([f'{schrodinger_path}/run', 'mmgbsa.py', posefile, basename, '--ncore', str(ncore)]).wait()
         end_timer("MMGBSA", mmgbsa_start)
 
