@@ -1,5 +1,38 @@
 import subprocess, sys, os, argparse
+import helper.pare as pare
+import schrodinger.structure as structure
 import schrodinger.application.glide.glide as glide
+
+def pocketeer(posefile, pocketfile):
+    """
+    Given a posefile, make another posefile containing only the protein pocket (with all ligands)
+
+    Parameters:
+        posefile: Name (or path) of the file containing the docked poses
+        pocketfile: Name (or path) of the file containing the pocket binding sites
+    
+    Returns:
+        None
+    """
+
+    ligands_to_add = []
+    for n, st in enumerate(structure.StructureReader(posefile)):
+        if (n == 0):
+            protein_st = st
+        else:
+            ligands_to_add.append(st)
+            if (n == 1):
+                ligand_st = st
+            else:
+                ligand_st.extend(st)
+
+    fa_set, h_set = pare.pareProteinWithinDistance(protein_st, ligand_st, dmax=4.0)
+    pocket = pare.pareMinimize(fa_set, h_set)
+
+    writer = structure.StructureWriter(pocketfile)
+    writer.append(pocket)
+    writer.extend(ligands_to_add)
+    writer.close()
 
 if __name__ == '__main__':
 
@@ -85,5 +118,7 @@ if __name__ == '__main__':
     dock_job.writeSimplified(dock_input)
 
     subprocess.Popen([f'{schrodinger_path}/glide', dock_input, '-WAIT', '-HOST', f'localhost:{ncore}']).wait()
+
+    pocketeer('dockjob_pv.maegz', 'pocket_pv.maegz')
 
     os.chdir(start_dir)
