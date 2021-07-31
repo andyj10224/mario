@@ -34,7 +34,7 @@ Driver => `python driver.py -h`
 
 Prepwizard => `SCHRODINGER/run prepwizard.py -h`
 
-Ligprep => `SCHRODINGER/run ligprep.py -h` or `python ligprep.py -h`
+Ligprep => `SCHRODINGER/run ligprep.py -h`
 
 Gridgen => `SCHRODINGER/run gridgen.py -h`
 

@@ -22,6 +22,7 @@ if __name__ == '__main__':
     parser.add_argument('--retrieve_pdb', help='[bool] Get the pdb online if the file is not in directory?', default=False, action='store_true')
     parser.add_argument('--docking_precision', help='[string] Which level of precision to run the docking job (HTVS, SP, or XP)', default='SP')
     parser.add_argument('--constraint_type', help='[string] The type of constraint to use for the docking (NONE, CORE, or SHAPE)', default='NONE')
+    parser.add_argument('--pocket_cutoff', help='[float] The cutoff distance (Angstroms) from the ligand that defines the binding pocket', default=5.0)
     parser.add_argument('--run_mmgbsa', help='[bool] run mmgbsa?', default=False, action='store_true')
     parser.add_argument('--run_apnet', help='[bool] run apnet?', default=False, action='store_true')
 
@@ -33,6 +34,7 @@ if __name__ == '__main__':
     retrieve_pdb = args.retrieve_pdb
     precision = args.docking_precision
     constraint_type = args.constraint_type
+    pocket_cutoff = float(args.pocket_cutoff)
     run_mmgbsa = args.run_mmgbsa
     run_apnet = args.run_apnet
 
@@ -74,13 +76,6 @@ if __name__ == '__main__':
         if entry.path.endswith(".mae"):
             prepared_proteins.append(entry.path)
 
-    # Get the ligand file
-    prepligfile = ""
-    ligdir = os.path.join("ligprep", ligands)
-    for entry in os.scandir(ligdir):
-        if entry.path.endswith(".maegz"):
-            prepligfile = entry.path
-
     # Run grid jobs (for every protein geometry we get)
     gridgen_start = start_timer('Gridgen')
     for protein_file in prepared_proteins:
@@ -97,13 +92,19 @@ if __name__ == '__main__':
     # Start docking jobs
     posedirs = []
     docking_start = start_timer("Docking")
+
     for gridfile in grid_files:
         basename = os.path.splitext(os.path.split(gridfile)[-1])[0]
         dock_dirname = f'{pdbid}_{basename}_{ligands}'
         posedirs.append(os.path.join('docking', dock_dirname))
         refligand = os.path.join('prepwizard', pdbid, f'{basename}_ligand.mae')
-        Popen([f'{schrodinger_path}/run', 'dock.py', gridfile, prepligfile, dock_dirname, '--ncore', str(ncore), \
-             '--refligand', refligand, '--constraint_type', constraint_type, '--precision', precision]).wait()
+
+        for subset in ['train', 'val']:
+            prepligfile = os.path.join('ligprep', ligands, f'{subset}_prepared.maegz')
+            Popen([f'{schrodinger_path}/run', 'dock.py', gridfile, prepligfile, dock_dirname, \
+                '--ncore', str(ncore), '--refligand', refligand, '--constraint_type', \
+                constraint_type, '--precision', precision, '--pocket_cutoff', pocket_cutoff]).wait()
+                
     end_timer("Docking", docking_start)
 
     # Read the output of the docking jobs
