@@ -34,7 +34,7 @@ if __name__ == '__main__':
     retrieve_pdb = args.retrieve_pdb
     precision = args.docking_precision
     constraint_type = args.constraint_type
-    pocket_cutoff = float(args.pocket_cutoff)
+    pocket_cutoff = args.pocket_cutoff
     run_mmgbsa = args.run_mmgbsa
     run_apnet = args.run_apnet
 
@@ -95,16 +95,16 @@ if __name__ == '__main__':
 
     for gridfile in grid_files:
         basename = os.path.splitext(os.path.split(gridfile)[-1])[0]
-        dock_dirname = f'{pdbid}_{basename}_{ligands}'
-        posedirs.append(os.path.join('docking', dock_dirname))
         refligand = os.path.join('prepwizard', pdbid, f'{basename}_ligand.mae')
 
         for subset in ['train', 'val']:
+            dock_dirname = f'{pdbid}_{basename}_{ligands}_{subset}'
+            posedirs.append(os.path.join('docking', dock_dirname))
             prepligfile = os.path.join('ligprep', ligands, f'{subset}_prepared.maegz')
             Popen([f'{schrodinger_path}/run', 'dock.py', gridfile, prepligfile, dock_dirname, \
                 '--ncore', str(ncore), '--refligand', refligand, '--constraint_type', \
-                constraint_type, '--precision', precision, '--pocket_cutoff', pocket_cutoff]).wait()
-                
+                constraint_type, '--precision', precision, '--pocket_cutoff', str(pocket_cutoff)]).wait()
+
     end_timer("Docking", docking_start)
 
     # Read the output of the docking jobs

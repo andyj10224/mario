@@ -32,7 +32,7 @@ def train_val_split(ligname):
     val_writer = structure.StructureWriter(f'ligands/{ligname}_val.sdf')
 
     for n, lig in enumerate(ligands):
-        if n % 5 == 4:
+        if n % 5 == 1:
             val_writer.append(lig)
         else:
             train_writer.append(lig)
