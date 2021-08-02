@@ -6,8 +6,7 @@ import schrodinger.structure as structure
 
 def write_data(posefile, dirname):
     """
-    Runs AP-Net-dG to get delta G predictions from machine learning 
-    (Adds the dG prediction as a column in the .maegz file)
+    Writes the data from a posefile to make a AP-Net-dG dataset
 
     Parameters:
         posefile (str) : The path to the posefile (located in docking directory)
@@ -34,12 +33,12 @@ def write_data(posefile, dirname):
     protein = structures[0]
     ligands = structures[1:]
 
-    for ligand in ligands:
+    for n, ligand in enumerate(ligands):
         RA = np.zeros((len(protein.atom), 3))
         RB = np.zeros((len(ligand.atom), 3))
         ZA = np.zeros(len(protein.atom))
         ZB = np.zeros(len(ligand.atom))
-        system = ligand.title
+        system = f'{ligand.title}:{n+1}'
         label = ligand.property['r_sd_training_label']
 
         for n, patom in enumerate(protein.atom):
@@ -62,17 +61,6 @@ def write_data(posefile, dirname):
     df = pd.DataFrame(data=data, dtype='object')
     pickle_path = os.path.join(newdir, 'dimers.pkl')
     df.to_pickle(pickle_path)
-
-def write_predictions(posefile, dirname):
-    """
-    Writes the AP-Net-dG predictions back to the posefile in the docking directory
-    (Adds the dG prediction as a column in the .maegz file)
-
-    Parameters:
-        posefile (str) : The path to the posefile (located in docking directory)
-        dirname (str) : The name of the directory to store the AP-Net-dG that contains the dG outputs (stored as $APNETDG/datasets/{dirname})
-    """
-    pass
 
 if __name__ == '__main__':
     ## ==> Read in the arguments <== ##

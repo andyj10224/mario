@@ -7,6 +7,12 @@ labels = ['Ki', 'IC50', 'Kd', 'EC50']
 label_keys = [f'{d}_sd_{l}_(nM)' for d in datatypes for l in labels]
 
 def train_val_split(ligname):
+    """
+    Splits a ligand, stored as ligands/{ligname}.sdf, into training and validation sets
+
+    Parameters:
+        ligname (str) : The name of the set of ligands, stored as ligands/{ligname}.sdf
+    """
     ligandfile = f'ligands/{ligname}.sdf'
     ligands = []
     for lig in structure.StructureReader(ligandfile):
