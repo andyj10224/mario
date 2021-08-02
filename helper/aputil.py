@@ -56,7 +56,7 @@ def write_data(posefile, dirname):
         data['ZB'].append(ZB)
         data['label'].append(label)
         data['system'].append(system)
-    
+
     newdir = f'{dg_path}/datasets/{dirname}'
     if not os.path.isdir(newdir): os.makedirs(newdir)
     df = pd.DataFrame(data=data, dtype='object')

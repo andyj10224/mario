@@ -1,43 +1,34 @@
 import os, sys, argparse, subprocess, shutil
 
-def eval_data(dirname):
+dg_path = os.environ.get('APNETDG')
+if dg_path is None: raise Exception("Environment variable $APNETDG is not set.")
 
-    dg_path = os.environ.get('APNETDG')
-    if dg_path is None:
-        raise Exception("Environment variable $APNETDG is not set.")
-    
-    start_dir = os.getcwd()
-    store_dir = os.path.join(start_dir, 'apnetdg', dirname)
-    if not os.path.isdir(store_dir): os.makedirs(store_dir)
-
-    os.chdir(dg_path)
-    subprocess.Popen(['python', 'eval_model.py', 'pocket_model_acsf', dirname, 'label']).wait()
-    os.chdir(start_dir)
-
-    # Copy csv and npy AP-Net-dG predictions
-    shutil.copy(f'{dg_path}/datasets/{dirname}_pocket_model_acsf_preds.csv', f'{start_dir}/apnetdg/{dirname}/pocket_model_acsf_preds.csv')
-    shutil.copy(f'{dg_path}/datasets/{dirname}_pocket_model_acsf_preds.npy', f'{start_dir}/apnetdg/{dirname}/pocket_model_acsf_preds.npy')
-
+schrodinger_path = os.environ.get('SCHRODINGER')
+if schrodinger_path is None: raise Exception("Environment variable $SCHRODINGER is not set.")
 
 if __name__ == '__main__':
 
     ## ==> Read in the arguments <== ##
     parser = argparse.ArgumentParser(description='Runs an AP-Net-dG prediction on the pocket of a docked protein-ligand system')
 
-    parser.add_argument('posefile', help='[string] The path to the posefile containing the docked protein-ligand geometries')
-    parser.add_argument('output_dir', help='[string] The name of the directory to store the AP-Net-dG results, stored as ./apnetdg/{output_dir}')
+    parser.add_argument('trainname', help='[string] The name of the directory containing training data, located in docking dir')
+    parser.add_argument('valname', help='[string] The name of the directory containing validation data, located in docking dir')
 
     args = parser.parse_args(sys.argv[1:])
+    trainname = args.trainname
+    valname = args.valname
 
-    posefile = args.posefile
-    dirname = args.output_dir
+    traindata = os.path.join('docking', trainname, 'pocket_pv.maegz')
+    valdata = os.path.join('docking', valname, 'pocket_pv.maegz')
 
-    schrodinger_path = os.environ.get('SCHRODINGER')
-    if schrodinger_path is None:
-        raise Exception("Environment variable $SCHRODINGER is not set.")
+    ## => Write train and validation data to AP-Net directory <== ##
+    subprocess.Popen([f'{schrodinger_path}/run', 'helper/aputil.py', traindata, trainname]).wait()
+    subprocess.Popen([f'{schrodinger_path}/run', 'helper/aputil.py', valdata, valname]).wait()
 
-    ## => Preprocess the data <== ##
-    subprocess.Popen([f'{schrodinger_path}/run', 'apnetprep.py', posefile, dirname]).wait()
+    ## => Train the AP-Net-dG predictions on the model <= ##
+    start_dir = os.getcwd()
+    os.chdir(dg_path)
+    subprocess.Popen(['python', 'train_model.py', trainname, valname, 'label']).wait()
+    os.chdir(start_dir)
 
-    ## => Run the AP-Net-dG predictions <= ##
-    eval_data(dirname)
+    ## => Write the AP-Net-dG predictions back to the posefiles <= ##
