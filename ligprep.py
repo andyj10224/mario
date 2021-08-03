@@ -6,6 +6,39 @@ labels = ['Ki', 'IC50', 'Kd', 'EC50']
 
 label_keys = [f'{d}_sd_{l}_(nM)' for d in datatypes for l in labels]
 
+def convert_to_float(data):
+    """
+    Converts a data point to a float
+
+    data (int, float, or str) : A piece of data from the sdf describing the activity of the ligand
+
+    Returns:
+        If conversion was successful, the processed float value.
+        Otherwise, None
+    """
+
+    if isinstance(data, float):
+        return data
+    elif isinstance(data, int):
+        return float(data)
+    elif isinstance(data, str):
+        numbers = []
+        curr_number = ''
+        for char in data:
+            if char.isnumeric() or char == '.':
+                curr_number += char
+            else:
+                if curr_number != '':
+                    numbers.append(float(curr_number))
+                    curr_number = ''
+
+        if len(numbers) == 1:
+            return numbers[0]
+        else:
+            return None
+    else:
+        return None
+
 def train_val_split(ligname):
     """
     Splits a ligand, stored as ligands/{ligname}.sdf, into training and validation sets
@@ -15,15 +48,33 @@ def train_val_split(ligname):
     """
     ligandfile = f'ligands/{ligname}.sdf'
     ligands = []
-    for lig in structure.StructureReader(ligandfile):
+    ligreader = structure.StructureReader(ligandfile)
+    breakout = False
+    to_continue = False
+    while (True):
+        try:
+            lig = next(ligreader)
+        except Exception as exception:
+            if isinstance(exception, StopIteration):
+                breakout = True
+            else:
+                to_continue = True
+
+        if breakout: break
+        
+        if to_continue:
+            to_continue = False
+            continue
+
         label = None
         for k in label_keys:
             if k in lig.property.keys():
                 if label is None:
-                    if lig.property[k] == '': continue
-                    label = float(lig.property[k])
+                    label = convert_to_float(lig.property[k])
                 else:
-                    label = min(label, float(lig.property[k]))
+                    test_label = convert_to_float(lig.property[k])
+                    if test_label is not None:
+                        label = min(label, test_label)
         if label is None:
             warnings.warn("Not all of the data has a trainable label.")
             continue

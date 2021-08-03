@@ -91,11 +91,12 @@ if __name__ == '__main__':
         end_timer('Prepwizard', prepwizard_start)
 
     # After prepwizard job finishes, we can go ahead and make the grid (using files in the prepwizard directory)
-    prepared_proteins = []
-    prepwizard_dir = os.path.join('prepwizard', pdbid)
-    for entry in os.scandir(prepwizard_dir):
-        if entry.path.endswith(".mae"):
-            prepared_proteins.append(entry.path)
+    if do_gridgen or do_docking or do_mmgbsa or do_apnet or do_analysis:
+        prepared_proteins = []
+        prepwizard_dir = os.path.join('prepwizard', pdbid)
+        for entry in os.scandir(prepwizard_dir):
+            if entry.path.endswith(".mae"):
+                prepared_proteins.append(entry.path)
 
     # Run grid jobs (for every protein geometry we get)
     if do_gridgen:
@@ -105,11 +106,12 @@ if __name__ == '__main__':
         end_timer('Gridgen', gridgen_start)
 
     # Get the grid files
-    grid_files = []
-    grid_dir = os.path.join('grids', pdbid)
-    for entry in os.scandir(grid_dir):
-        if entry.path.endswith(".zip"):
-            grid_files.append(entry.path)
+    if do_docking or do_mmgbsa or do_apnet or do_analysis:
+        grid_files = []
+        grid_dir = os.path.join('grids', pdbid)
+        for entry in os.scandir(grid_dir):
+            if entry.path.endswith(".zip"):
+                grid_files.append(entry.path)
 
     # Start docking jobs
     if do_docking:
@@ -127,10 +129,11 @@ if __name__ == '__main__':
         end_timer("Docking", docking_start)
 
     # Get the necessary information for MMGBSA and AP-Net-dG
-    modelnames = []
-    for gridfile in grid_files:
-        basename = os.path.splitext(os.path.split(gridfile)[-1])[0]
-        modelnames.append(f'{pdbid}_{basename}_{ligands}')
+    if do_mmgbsa or do_apnet or do_analysis:
+        modelnames = []
+        for gridfile in grid_files:
+            basename = os.path.splitext(os.path.split(gridfile)[-1])[0]
+            modelnames.append(f'{pdbid}_{basename}_{ligands}')
     
     if do_mmgbsa:
         mmgbsa_start = start_timer("MMGBSA")
