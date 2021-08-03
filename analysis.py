@@ -26,7 +26,7 @@ if __name__ == '__main__':
 
     args = parser.parse_args(sys.argv[1:])
     setname = args.setname
-    do_mmgbsa = args.do_mmgbsa
+    do_mmgbsa = not args.skip_mmgbsa
 
     dg_path = os.environ.get('APNETDG')
     if dg_path is None: raise Exception("Environment variable $APNETDG is not set.")
