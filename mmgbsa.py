@@ -1,4 +1,4 @@
-import sys, os, argparse, subprocess
+import sys, os, argparse, subprocess, shutil
 
 if __name__ == '__main__':
     ## ==> Read in the arguments <== ##
@@ -25,8 +25,10 @@ if __name__ == '__main__':
 
     if do_pocket:
         posefile = os.path.abspath(os.path.join('docking', posedir, 'pocket_pv.maegz'))
+        output = 'pocket-out.csv'
     else:
         posefile = os.path.abspath(os.path.join('docking', posedir, 'dockjob_pv.maegz'))
+        output = 'dockjob-out.csv'
 
     start_dir = os.getcwd()
     work_dir = os.path.join('mmgbsa', outdir)
@@ -34,4 +36,5 @@ if __name__ == '__main__':
     os.chdir(work_dir)
 
     subprocess.Popen([f'{schrodinger_path}/prime_mmgbsa', posefile, '-out_type', 'PV', '-job_type', 'ENERGY', '-HOST', f'localhost:{ncore}', '-WAIT']).wait()
+    shutil.move(output, 'output.csv')
     os.chdir(start_dir)

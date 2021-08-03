@@ -27,10 +27,11 @@ if __name__ == '__main__':
     parser.add_argument('--skip_ligprep', help='[bool] skip the ligand preparation (if it\'s already done)', default=False, action='store_true')
     parser.add_argument('--skip_gridgen', help='[bool] skip the grid generation (if it\'s already done)', default=False, action='store_true')
     parser.add_argument('--skip_docking', help='[bool] skip the ligand docking (if it\'s already done)', default=False, action='store_true')
-    parser.add_argument('--run_mmgbsa', help='[bool] run mmgbsa?', default=False, action='store_true')
-    parser.add_argument('--run_apnet', help='[bool] run apnet?', default=False, action='store_true')
-    parser.add_argument('--run_analysis', help='[bool] run the analysis after AP-Net-dG and MMGBSA?', default=False, action='store_true')
+    parser.add_argument('--skip_mmgbsa', help='[bool] skip the MMGBSA calculation?', default=False, action='store_true')
+    parser.add_argument('--skip_apnet', help='[bool] skip AP-Net-dG training and validation?', default=False, action='store_true')
+    parser.add_argument('--skip_analysis', help='[bool] skip running the analysis after AP-Net-dG and MMGBSA?', default=False, action='store_true')
     parser.add_argument('--mmgbsa_do_pocket', help='[bool] run mmgbsa on the binding pocket of the poses only?', default=False, action='store_true')
+    parser.add_argument('--mmgbsa_skip_analysis', help='[bool] skip mmgbsa when running the analysis?', default=False, action='store_true')
 
     args = parser.parse_args(sys.argv[1:])
 
@@ -45,16 +46,19 @@ if __name__ == '__main__':
     do_ligprep = not args.skip_ligprep
     do_gridgen = not args.skip_gridgen
     do_docking = not args.skip_docking
-    do_mmgbsa = args.run_mmgbsa
-    do_apnet = args.run_apnet
-    do_analysis = args.run_analysis
+    do_mmgbsa = not args.skip_mmgbsa
+    do_apnet = not args.skip_apnet
+    do_analysis = not args.skip_analysis
     do_pocket = args.mmgbsa_do_pocket
+    do_mmgbsa_analysis = not args.mmgbsa_skip_analysis
 
     ## ==> Start Pipeline <== ##
 
     # Schrodinger Environmental Variable (MUST be set)
     schrodinger_path = os.environ.get('SCHRODINGER')
     if schrodinger_path is None: raise Exception("Environment variable $SCHRODINGER is not set.")
+
+    print(f'\tHere we go!!!\n')
 
     # Allows prepwizard and ligprep to be run in parallel
     if do_prepwizard:
@@ -147,8 +151,10 @@ if __name__ == '__main__':
     if do_analysis:
         analysis_start = start_timer("ANALYSIS")
         for modelname in modelnames:
-            if not do_mmgbsa:
-                Popen(['python', 'analysis.py', f'{modelname}_val', '--skip_mmgbsa']).wait()
+            if not do_mmgbsa_analysis:
+                Popen([f'{schrodinger_path}/run', 'analysis.py', f'{modelname}_val', '--skip_mmgbsa']).wait()
             else:
-                Popen(['python', 'analysis.py', f'{modelname}_val']).wait()
+                Popen([f'{schrodinger_path}/run', 'analysis.py', f'{modelname}_val']).wait()
         end_timer("ANALYSIS", analysis_start)
+
+    print(f'\tPipeline finished!!! Thank you Mario! Your quest is complete! :)')

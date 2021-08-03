@@ -120,7 +120,7 @@ if __name__ == '__main__':
     dock_input = 'dockjob.inp'
     dock_job.writeSimplified(dock_input)
 
-    subprocess.Popen([f'{schrodinger_path}/glide', dock_input, '-WAIT', '-HOST', f'localhost:{ncore}']).wait()
+    subprocess.Popen([f'{schrodinger_path}/glide', dock_input, '-WAIT', '-HOST', f'localhost:{ncore}', '-OVERWRITE']).wait()
 
     pocketeer('dockjob_pv.maegz', 'pocket_pv.maegz', pocket_cutoff)
 
