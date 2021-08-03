@@ -147,5 +147,8 @@ if __name__ == '__main__':
     if do_analysis:
         analysis_start = start_timer("ANALYSIS")
         for modelname in modelnames:
-            Popen(['python', 'analysis.py', f'{modelname}_val']).wait()
+            if not do_mmgbsa:
+                Popen(['python', 'analysis.py', f'{modelname}_val', '--skip_mmgbsa']).wait()
+            else:
+                Popen(['python', 'analysis.py', f'{modelname}_val']).wait()
         end_timer("ANALYSIS", analysis_start)

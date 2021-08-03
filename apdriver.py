@@ -35,6 +35,7 @@ if __name__ == '__main__':
     os.chdir(start_dir)
 
     ## => Save the AP-Net-dG predictions <= ##
-    os.makedirs(f'apnetdg/{valname}')
+    pred_dir = f'apnetdg/{valname}'
+    if not os.path.isdir(pred_dir): os.makedirs(pred_dir)
     shutil.copy(f'{dg_path}/datasets/{valname}_{modelname}_preds.csv', f'apnetdg/{valname}/preds.csv')
     shutil.copy(f'{dg_path}/datasets/{valname}_{modelname}_preds.npy', f'apnetdg/{valname}/preds.npy')

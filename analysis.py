@@ -22,9 +22,11 @@ if __name__ == '__main__':
     ## ==> Read in the arguments <== ##
     parser = argparse.ArgumentParser(description='A module to analyze the results of different binding energy prediction softwares')
     parser.add_argument('setname', help='[string] The name of the validation set you are evaluating the different methods on (ex: 4mxo_site_1_struct_1_S985_val')
+    parser.add_argument('--skip_mmgbsa', help='[bool] Skip MMGBSA in the analysis?', default=False, action='store_true')
 
     args = parser.parse_args(sys.argv[1:])
     setname = args.setname
+    do_mmgbsa = args.do_mmgbsa
 
     dg_path = os.environ.get('APNETDG')
     if dg_path is None: raise Exception("Environment variable $APNETDG is not set.")
@@ -32,9 +34,11 @@ if __name__ == '__main__':
     results = {
         'system' : [],
         'ref_dG' : [],
-        'apnet_dG' : [],
-        'mmgbsa_dG' : []
+        'apnet_dG' : []
     }
+
+    if do_mmgbsa:
+        results['mmgbsa_dG'] = []
 
     dg_data = pd.read_pickle(f'{dg_path}/datasets/{setname}/dimers.pkl')
     for n in range(len(dg_data)):
@@ -45,9 +49,10 @@ if __name__ == '__main__':
     for n in range(len(dg_pred)):
         results['apnet_dG'].append(to_dG(dg_pred['AP_net_dG_pKi'][n]))
 
-    mm_res = pd.read_csv(f'mmgbsa/{setname}/pocket-out.csv')
-    for n in range(len(mm_res)):
-        results['mmgbsa_dG'].append(mm_res['r_psp_MMGBSA_dG_Bind'][n])
+    if do_mmgbsa:
+        mm_res = pd.read_csv(f'mmgbsa/{setname}/pocket-out.csv')
+        for n in range(len(mm_res)):
+            results['mmgbsa_dG'].append(mm_res['r_psp_MMGBSA_dG_Bind'][n])
 
     df = pd.DataFrame(data=results, dtype='object')
     df_dir = os.path.join('analysis', setname)
