@@ -1,4 +1,5 @@
 import os, sys, argparse, subprocess, warnings, math
+import numpy as np
 import schrodinger.structure as structure
 
 datatypes = ['s', 'i', 'r']
@@ -41,13 +42,19 @@ def convert_to_float(data):
 
 def train_val_split(ligname):
     """
-    Splits a ligand, stored as ligands/{ligname}.sdf, into training and validation sets
+    Splits a ligand, stored as ligands/{ligname}.sdf, into training and validation sets.
+    Also performs preprocessing, in the case the same ligand geometry contains multiple data points.
 
     Parameters:
         ligname (str) : The name of the set of ligands, stored as ligands/{ligname}.sdf
     """
     ligandfile = f'ligands/{ligname}.sdf'
-    ligands = []
+
+    ligands = {}
+    labels_per_ligand = {}
+    mean_label_per_ligand = {}
+    std_label_per_ligand = {}
+
     ligreader = structure.StructureReader(ligandfile)
     breakout = False
     to_continue = False
@@ -80,16 +87,33 @@ def train_val_split(ligname):
             continue
 
         label = 9.0 - math.log(label, 10.0)
-        lig.property['r_sd_training_label'] = label
-        ligands.append(lig)
+        # lig.property['r_sd_training_label'] = label
+
+        lig_id = lig.property['s_sd_Ligand_InChI_Key']
+        if lig_id not in ligands.keys():
+            ligands[lig_id] = lig
+            labels_per_ligand[lig_id] = [label]
+        else:
+            labels_per_ligand[lig_id].append(label)
+
+    for lig_id in ligands.keys():
+        mean_label_per_ligand[lig_id] = np.mean(labels_per_ligand[lig_id])
+        std_label_per_ligand[lig_id] = np.std(labels_per_ligand[lig_id])
+        ligands[lig_id].property['r_sd_training_label'] = mean_label_per_ligand[lig_id]
+        ligands[lig_id].property['r_sd_mean_pKi'] = mean_label_per_ligand[lig_id]
+        ligands[lig_id].property['r_sd_std_pKi'] = std_label_per_ligand[lig_id]
+
+    lig_list = []
+    for lig in ligands.values():
+        lig_list.append(lig)
     
-    ligands = sorted(ligands, key= lambda x: x.property['r_sd_training_label'])
+    lig_list = sorted(lig_list, key=lambda x: x.property['r_sd_training_label'])
 
     train_writer = structure.StructureWriter(f'ligands/{ligname}_train.sdf')
     val_writer = structure.StructureWriter(f'ligands/{ligname}_val.sdf')
 
-    for n, lig in enumerate(ligands):
-        if n % 5 == 1:
+    for n, lig in enumerate(lig_list):
+        if n % 5 == 2:
             val_writer.append(lig)
         else:
             train_writer.append(lig)
@@ -137,7 +161,13 @@ if __name__ == '__main__':
     val_output = 'val_prepared.maegz'
 
     # Run ligprep on train and test data
-    subprocess.Popen([f'{schrodinger_path}/ligprep', '-isd', train_ligands, '-omae', train_output, '-epik', '-ph', '7.4', '-pht', '0.1', '-HOST', f'localhost:{ncore}', '-WAIT']).wait()
-    subprocess.Popen([f'{schrodinger_path}/ligprep', '-isd', val_ligands, '-omae', val_output, '-epik', '-ph', '7.4', '-pht', '0.1', '-HOST', f'localhost:{ncore}', '-WAIT']).wait()
+    train_prep = subprocess.Popen([f'{schrodinger_path}/ligprep', '-isd', train_ligands, '-omae', train_output, '-epik', '-ph', '7.4', '-pht', '0.1', '-HOST', f'localhost:{ncore}', '-WAIT'])
+    val_prep = subprocess.Popen([f'{schrodinger_path}/ligprep', '-isd', val_ligands, '-omae', val_output, '-epik', '-ph', '7.4', '-pht', '0.1', '-HOST', f'localhost:{ncore}', '-WAIT'])
+
+    train_prep.wait()
+    val_prep.wait()
     
     os.chdir(start_dir)
+
+    if train_prep.returncode != 0 or val_prep.returncode != 0:
+        raise Exception("The ligprep job has failed.")

@@ -1,6 +1,9 @@
 import sys, os, argparse, warnings, time
 from subprocess import Popen
 
+def fail():
+    raise Exception("MAMA MIA!!! MARIO encountered an error.")
+
 def start_timer(name):
     print(f'\tStarting {name} Job...\n')
     return time.time()
@@ -16,6 +19,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='MARIO: A pipeline to automate the preprocessing and analysis of protein-ligand systems.')
 
     parser.add_argument('pdbid', help='[string] The pdbid for the protein, located at pdbs/{pdb}.pdb')
+    parser.add_argument('ligid', help='[string] The id of the ligand at the binding site of the protein')
     parser.add_argument('ligands', help='[string] Name of the ligand set, located at ligands/{ligands}.sdf')
 
     parser.add_argument('--ncore', help='[bool] Number of CPU cores to allocate to the pipeline', default=1)
@@ -36,6 +40,7 @@ if __name__ == '__main__':
     args = parser.parse_args(sys.argv[1:])
 
     pdbid = args.pdbid
+    ligid = args.ligid.upper()
     ligands = args.ligands
     ncore = int(args.ncore)
     retrieve_pdb = args.retrieve_pdb
@@ -74,6 +79,7 @@ if __name__ == '__main__':
     
     if ncore == 1 and do_prepwizard:
         prepwizard_job.wait()
+        if prepwizard_job.returncode != 0: fail()
         end_timer('Prepwizard', prepwizard_start)
         ligprep_cores = 1
     
@@ -83,81 +89,60 @@ if __name__ == '__main__':
 
         # Wait for ligprep to finish
         ligprep_job.wait()
+        if ligprep_job.returncode != 0: fail()
         end_timer('Ligprep', ligprep_start)
 
     # Wait for prepwizard to finish
     if ncore != 1 and do_prepwizard:
         prepwizard_job.wait()
+        if prepwizard_job.returncode != 0: fail()
         end_timer('Prepwizard', prepwizard_start)
-
-    # After prepwizard job finishes, we can go ahead and make the grid (using files in the prepwizard directory)
-    if do_gridgen or do_docking or do_mmgbsa or do_apnet or do_analysis:
-        prepared_proteins = []
-        prepwizard_dir = os.path.join('prepwizard', pdbid)
-        for entry in os.scandir(prepwizard_dir):
-            if entry.path.endswith(".mae"):
-                prepared_proteins.append(entry.path)
 
     # Run grid jobs (for every protein geometry we get)
     if do_gridgen:
         gridgen_start = start_timer('Gridgen')
-        for protein_file in prepared_proteins:
-            Popen([f'{schrodinger_path}/run', 'gridgen.py', protein_file, pdbid, '--ncore', str(ncore)]).wait()
+        gridgen_job = Popen([f'{schrodinger_path}/run', 'gridgen.py', pdbid, ligid, '--ncore', str(ncore)])
+        gridgen_job.wait()
+        if gridgen_job.returncode != 0: fail()
         end_timer('Gridgen', gridgen_start)
-
-    # Get the grid files
-    if do_docking or do_mmgbsa or do_apnet or do_analysis:
-        grid_files = []
-        grid_dir = os.path.join('grids', pdbid)
-        for entry in os.scandir(grid_dir):
-            if entry.path.endswith(".zip"):
-                grid_files.append(entry.path)
 
     # Start docking jobs
     if do_docking:
         docking_start = start_timer("Docking")
-        for gridfile in grid_files:
-            basename = os.path.splitext(os.path.split(gridfile)[-1])[0]
-            refligand = os.path.join('prepwizard', pdbid, f'{basename}_ligand.mae')
-            for subset in ['train', 'val']:
-                dock_dirname = f'{pdbid}_{basename}_{ligands}_{subset}'
-                # posedirs.append(os.path.join('docking', dock_dirname))
-                prepligfile = os.path.join('ligprep', ligands, f'{subset}_prepared.maegz')
-                Popen([f'{schrodinger_path}/run', 'dock.py', gridfile, prepligfile, dock_dirname, \
-                    '--ncore', str(ncore), '--refligand', refligand, '--constraint_type', \
-                    constraint_type, '--precision', precision, '--pocket_cutoff', str(pocket_cutoff)]).wait()
+        train_dock = Popen([f'{schrodinger_path}/run', 'dock.py', pdbid, ligands, '--ncore', str(ncore), '--refligand', ligid, '--constraint_type', \
+            constraint_type, '--precision', precision, '--pocket_cutoff', str(pocket_cutoff), '--training'])
+        val_dock = Popen([f'{schrodinger_path}/run', 'dock.py', pdbid, ligands, '--ncore', str(ncore), '--refligand', ligid, '--constraint_type', \
+            constraint_type, '--precision', precision, '--pocket_cutoff', str(pocket_cutoff)])
+        train_dock.wait()
+        val_dock.wait()
+        if train_dock.returncode != 0 or val_dock.returncode != 0: fail()
         end_timer("Docking", docking_start)
-
-    # Get the necessary information for MMGBSA and AP-Net-dG
-    if do_mmgbsa or do_apnet or do_analysis:
-        modelnames = []
-        for gridfile in grid_files:
-            basename = os.path.splitext(os.path.split(gridfile)[-1])[0]
-            modelnames.append(f'{pdbid}_{basename}_{ligands}')
     
     if do_mmgbsa:
         mmgbsa_start = start_timer("MMGBSA")
-        for modelname in modelnames:
-            dirname = f'{modelname}_val'
-            if do_pocket:
-                Popen([f'{schrodinger_path}/run', 'mmgbsa.py', dirname, dirname, '--ncore', str(ncore), '--do_pocket']).wait()
-            else:
-                Popen([f'{schrodinger_path}/run', 'mmgbsa.py', dirname, dirname, '--ncore', str(ncore)]).wait()
+        if do_pocket:
+            mmgbsa_job = Popen([f'{schrodinger_path}/run', 'mmgbsa.py', ligands, '--ncore', str(ncore), '--do_pocket'])
+        else:
+            mmgbsa_job = Popen([f'{schrodinger_path}/run', 'mmgbsa.py', ligands, '--ncore', str(ncore)])
+        mmgbsa_job.wait()
+        if mmgbsa_job.returncode != 0: fail()
         end_timer("MMGBSA", mmgbsa_start)
 
     if do_apnet:
         apnet_start = start_timer("AP-NET-DG")
-        for modelname in modelnames:
-            Popen(['python', 'apdriver.py', f'{modelname}_train', f'{modelname}_val', modelname]).wait()
+        ap_job = Popen(['python', 'apdriver.py', ligands])
+        ap_job.wait()
+        if ap_job.returncode != 0: fail()
         end_timer("AP-NET-DG", apnet_start)
 
     if do_analysis:
         analysis_start = start_timer("ANALYSIS")
-        for modelname in modelnames:
-            if not do_mmgbsa_analysis:
-                Popen([f'{schrodinger_path}/run', 'analysis.py', f'{modelname}_val', '--skip_mmgbsa']).wait()
-            else:
-                Popen([f'{schrodinger_path}/run', 'analysis.py', f'{modelname}_val']).wait()
+        if not do_mmgbsa_analysis:
+            analysis_job = Popen([f'{schrodinger_path}/run', 'analysis.py', f'{ligands}_val', '--skip_mmgbsa'])
+        else:
+            analysis_job = Popen([f'{schrodinger_path}/run', 'analysis.py', f'{ligands}_val'])
+        analysis_job.wait()
+        if analysis_job.returncode != 0: fail()
         end_timer("ANALYSIS", analysis_start)
 
     print(f'\tPipeline finished!!! Thank you Mario! Your quest is complete! :)')

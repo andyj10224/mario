@@ -119,8 +119,8 @@ if __name__ == '__main__':
     
     output_structs = ppwt.output.structs
 
-    for n, st in enumerate(output_structs):
-        fname = f'struct_{n+1}.mae'
-        st.write(fname)
+    st = output_structs[0]
+    fname = f'{pdbid}.mae'
+    st.write(fname)
 
     os.chdir(start_dir)

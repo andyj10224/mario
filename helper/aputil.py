@@ -38,7 +38,7 @@ def write_data(posefile, dirname):
         RB = np.zeros((len(ligand.atom), 3))
         ZA = np.zeros(len(protein.atom))
         ZB = np.zeros(len(ligand.atom))
-        system = f'{ligand.title}:{n+1}'
+        system = f'{ligand.property["s_sd_Ligand_InChI_Key"]}:{n+1}'
         label = ligand.property['r_sd_training_label']
 
         for n, patom in enumerate(protein.atom):

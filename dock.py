@@ -41,26 +41,26 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Runs a Schrodinger Glide Docking Job on prepared ligands and a grid')
 
-    parser.add_argument('gridfile', help='[string] The path to the gridfile')
-    parser.add_argument('ligandfile', help='[string] The path to the ligand set that is being docked')
-    parser.add_argument('output_dir', help='[string] The name of the directory to store the Docking job, stored as ./docking/{output_dir}')
+    parser.add_argument('pdbid', help='[string] pdbid of the protein')
+    parser.add_argument('ligands', help='[string] The name of the set of ligands we are docking on')
 
     parser.add_argument('--precision', help='[string] Which level of precision to run the docking job (HTVS, SP, or XP)', default='SP')
-    parser.add_argument('--refligand', help='[string] The path to the reference ligand (for constraints)', default=None)
+    parser.add_argument('--refligand', help='[string] The id of the reference ligand (for constraints), stored as ./prepwizard/{refligand}.mae', default=None)
     parser.add_argument('--constraint_type', help='[string] The type of constraint to use for the docking (NONE, CORE, or SHAPE)', default='NONE')
     parser.add_argument('--pocket_cutoff', help='[float] The cutoff distance (Angstroms) from the ligand that defines the binding pocket', default=5.0)
+    parser.add_argument('--training', help='[bool] We are docking on a training set, as opposed to a validation set', default=False, action='store_true')
     parser.add_argument('--ncore', help='[int] Number of CPU cores to run the job on', default=1)
 
     args = parser.parse_args(sys.argv[1:])
 
-    gridfile = args.gridfile
-    ligandfile = args.ligandfile
-    outdir = args.output_dir
+    pdbid = args.pdbid
+    ligands = args.ligands
 
     precision = args.precision.upper()
-    refligand = args.refligand
+    refligand = args.refligand.upper()
     constraint_type = args.constraint_type.upper()
     pocket_cutoff = float(args.pocket_cutoff)
+    training = args.training
     ncore = args.ncore
 
     ## => Run the Glide Docking Job <= ##
@@ -68,12 +68,17 @@ if __name__ == '__main__':
     schrodinger_path = os.environ.get('SCHRODINGER')
     if schrodinger_path is None: raise Exception("Environment variable $SCHRODINGER is not set.")
 
+    gridfile = f'grids/{pdbid}/{pdbid}.zip'
+    ligands = f'{ligands}_val' if not training else f'{ligands}_train'
+    ligandfile = f'ligands/{ligands}.sdf'
+    work_dir = f'docking/{ligands}'
+    refligand = f'prepwizard/{refligand}.mae' if refligand is not None else None
+
     gridfile = os.path.abspath(gridfile)
     ligandfile = os.path.abspath(ligandfile)
-    refligand = os.path.abspath(refligand)
+    refligand = os.path.abspath(refligand) if refligand is not None else None
 
     start_dir = os.getcwd()
-    work_dir = os.path.join('docking', outdir)
     if not os.path.isdir(work_dir): os.makedirs(work_dir)
     os.chdir(work_dir)
 
@@ -120,8 +125,11 @@ if __name__ == '__main__':
     dock_input = 'dockjob.inp'
     dock_job.writeSimplified(dock_input)
 
-    subprocess.Popen([f'{schrodinger_path}/glide', dock_input, '-WAIT', '-HOST', f'localhost:{ncore}', '-OVERWRITE']).wait()
+    dock_job = subprocess.Popen([f'{schrodinger_path}/glide', dock_input, '-WAIT', '-HOST', f'localhost:{ncore}', '-OVERWRITE'])
+    dock_job.wait()
 
     pocketeer('dockjob_pv.maegz', 'pocket_pv.maegz', pocket_cutoff)
-
     os.chdir(start_dir)
+
+    if dock_job.returncode != 0:
+        raise Exception("The docking job has failed.")
