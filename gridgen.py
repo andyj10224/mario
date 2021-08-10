@@ -25,18 +25,19 @@ if __name__ == '__main__':
     schrodinger_path = os.environ.get('SCHRODINGER')
     if schrodinger_path is None: raise Exception("Environment variable $SCHRODINGER is not set.")
 
-    # Make the directory to hold the reference ligands
+    # Make sure the prepwizard job has already been run
     protein_file = f'prepwizard/{pdbid}/{pdbid}.mae'
     if not os.path.isfile(protein_file):
         raise Exception(f"The file prepwizard/{pdbid}/{pdbid}.mae has not been found. Please prepare your protein before calling Gridgen.")
 
+    # The protein gets converted into a Schrodinger file, and which atoms represent ligands are determined
     protein_system = structure.StructureReader.read(protein_file)
     ligand_lists = findhets.find_hets(protein_system, include_metals=False, include_hydrogens=True)
 
     # Center of mass of the docking ligand in the pdb file
     ligand_com = [0.0, 0.0, 0.0]
 
-    # Find the docking site ligand
+    # Find the docking site ligand (match with ligid)
     docking_site_atoms = []
     for atoms in ligand_lists:
         list_ligid = protein_system.atom[atoms[0]].pdbres.strip()
@@ -51,7 +52,8 @@ if __name__ == '__main__':
 
     if len(docking_site_atoms) == 0:
         raise Exception(f"Docking site ligand, with the id {ligid.upper()} cannot be found in the pdb file!!!")
-
+    
+    # Remove the ligand at the binding site, and write the structure to a file
     protein_system.deleteAtoms(docking_site_atoms)
     protein_clear_docking_site = os.path.join('prepwizard', pdbid, f'{pdbid}_clear_docking_site.mae')
     structure.StructureWriter.write(protein_system, protein_clear_docking_site)
@@ -74,17 +76,22 @@ if __name__ == '__main__':
         'GRID_CENTER' : [ligand_com[0], ligand_com[1], ligand_com[2]]
     }
 
+    # Change to grids directory
     start_dir = os.getcwd()
     work_dir = os.path.join('grids', pdbid)
     if not os.path.isdir(work_dir): os.makedirs(work_dir)
     os.chdir(work_dir)
 
+    # Write the input file
     glide_job = glide.Gridgen(options)
     inp_file = f'{pdbid}.inp'
     glide_job.writeSimplified(inp_file)
 
+    # Run the gridgen job
     gridgen_job = subprocess.Popen([f'{schrodinger_path}/glide', inp_file, '-WAIT', '-HOST', f'localhost:{ncore}', '-OVERWRITE'])
     gridgen_job.wait()
+
+    # Move back to starting directory
     os.chdir(start_dir)
 
     if gridgen_job.returncode != 0:

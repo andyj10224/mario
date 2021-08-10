@@ -25,12 +25,14 @@ if __name__ == '__main__':
     if os.path.isfile(pdb):
         pdb_struct = structure.StructureReader.read(pdb)
     elif retrieve_pdb:
+        # If the --retrieve_pdb flag is set, get the pdb structure from the internet
         pdb_struct = prepare.retrieve_and_read_pdb(pdbid)
         if not os.path.isdir('pdbs'): os.makedirs('pdbs')
         shutil.move(f'{pdbid}.pdb', f'{pdb}')
     else:
         raise FileNotFoundError(f'The pdb input file {pdb} is not found')
 
+    # Switch to the prepwizard directory as the working directory
     start_dir = os.getcwd()
     work_dir = os.path.join('prepwizard', pdbid)
     if not os.path.isdir(work_dir): os.makedirs(work_dir)
@@ -119,8 +121,10 @@ if __name__ == '__main__':
     
     output_structs = ppwt.output.structs
 
+    # Write the output to the prepwizard directory
     st = output_structs[0]
     fname = f'{pdbid}.mae'
     st.write(fname)
 
+    # Change back to the starting directory
     os.chdir(start_dir)

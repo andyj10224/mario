@@ -29,6 +29,7 @@ if __name__ == '__main__':
         posefile = os.path.abspath(os.path.join('docking', ligands, 'dockjob_pv.maegz'))
         output = 'dockjob-out.csv'
 
+    # Move to the MMGBSA directory
     start_dir = os.getcwd()
     work_dir = os.path.join('mmgbsa', ligands)
     if not os.path.isdir(work_dir): os.makedirs(work_dir)
@@ -38,6 +39,8 @@ if __name__ == '__main__':
     mmgbsa_job.wait()
 
     shutil.move(output, 'output.csv')
+
+    # Move back to the starting directory
     os.chdir(start_dir)
 
     if mmgbsa_job.returncode != 0:

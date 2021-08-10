@@ -45,7 +45,7 @@ if __name__ == '__main__':
     parser.add_argument('ligands', help='[string] The name of the set of ligands we are docking on')
 
     parser.add_argument('--precision', help='[string] Which level of precision to run the docking job (HTVS, SP, or XP)', default='SP')
-    parser.add_argument('--refligand', help='[string] The id of the reference ligand (for constraints), stored as ./prepwizard/{refligand}.mae', default=None)
+    parser.add_argument('--refligand', help='[string] The id of the reference ligand (for constraints), stored as ./prepwizard/{pdbid}/{refligand}.mae', default=None)
     parser.add_argument('--constraint_type', help='[string] The type of constraint to use for the docking (NONE, CORE, or SHAPE)', default='NONE')
     parser.add_argument('--pocket_cutoff', help='[float] The cutoff distance (Angstroms) from the ligand that defines the binding pocket', default=5.0)
     parser.add_argument('--training', help='[bool] We are docking on a training set, as opposed to a validation set', default=False, action='store_true')
@@ -68,6 +68,7 @@ if __name__ == '__main__':
     schrodinger_path = os.environ.get('SCHRODINGER')
     if schrodinger_path is None: raise Exception("Environment variable $SCHRODINGER is not set.")
 
+    # Deduce the path of the files based on inputs
     gridfile = f'grids/{pdbid}/{pdbid}.zip'
     ligands = f'{ligands}_val' if not training else f'{ligands}_train'
     ligandfile = f'ligands/{ligands}.sdf'
@@ -78,6 +79,7 @@ if __name__ == '__main__':
     ligandfile = os.path.abspath(ligandfile)
     refligand = os.path.abspath(refligand) if refligand is not None else None
 
+    # Move to the docking directory
     start_dir = os.getcwd()
     if not os.path.isdir(work_dir): os.makedirs(work_dir)
     os.chdir(work_dir)
@@ -120,15 +122,18 @@ if __name__ == '__main__':
     if precision not in ['HTVS', 'SP', 'XP']:
         raise Exception(f"Precision type {precision} is not an available option!")
 
+    # Write the input file
     dock_job = glide.Dock(options)
-
     dock_input = 'dockjob.inp'
     dock_job.writeSimplified(dock_input)
 
+    # Run the docking job
     dock_job = subprocess.Popen([f'{schrodinger_path}/glide', dock_input, '-WAIT', '-HOST', f'localhost:{ncore}', '-OVERWRITE'])
     dock_job.wait()
 
     pocketeer('dockjob_pv.maegz', 'pocket_pv.maegz', pocket_cutoff)
+
+    # Move back to the starting directory
     os.chdir(start_dir)
 
     if dock_job.returncode != 0:

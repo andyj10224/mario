@@ -2,6 +2,7 @@ import os, sys, argparse, subprocess, warnings, math
 import numpy as np
 import schrodinger.structure as structure
 
+# Get the different ways the activity can be represented as a Schrodinger Structure
 datatypes = ['s', 'i', 'r']
 labels = ['Ki', 'IC50', 'Kd', 'EC50']
 
@@ -87,7 +88,6 @@ def train_val_split(ligname):
             continue
 
         label = 9.0 - math.log(label, 10.0)
-        # lig.property['r_sd_training_label'] = label
 
         lig_id = lig.property['s_sd_Ligand_InChI_Key']
         if lig_id not in ligands.keys():
@@ -107,11 +107,13 @@ def train_val_split(ligname):
     for lig in ligands.values():
         lig_list.append(lig)
     
+    # Sort the list of ligands by the activity
     lig_list = sorted(lig_list, key=lambda x: x.property['r_sd_training_label'])
 
     train_writer = structure.StructureWriter(f'ligands/{ligname}_train.sdf')
     val_writer = structure.StructureWriter(f'ligands/{ligname}_val.sdf')
 
+    # One out of every five structures goes in the validation set
     for n, lig in enumerate(lig_list):
         if n % 5 == 2:
             val_writer.append(lig)
@@ -151,6 +153,7 @@ if __name__ == '__main__':
     train_ligands = os.path.abspath(train_ligands)
     val_ligands = os.path.abspath(val_ligands)
 
+    # Change the working directory to the ligprep directory
     start_dir = os.getcwd()
     work_dir = os.path.join('ligprep', ligname)
     if not os.path.isdir(work_dir): os.makedirs(work_dir)
@@ -162,11 +165,11 @@ if __name__ == '__main__':
 
     # Run ligprep on train and test data
     train_prep = subprocess.Popen([f'{schrodinger_path}/ligprep', '-isd', train_ligands, '-omae', train_output, '-epik', '-ph', '7.4', '-pht', '0.1', '-HOST', f'localhost:{ncore}', '-WAIT'])
-    val_prep = subprocess.Popen([f'{schrodinger_path}/ligprep', '-isd', val_ligands, '-omae', val_output, '-epik', '-ph', '7.4', '-pht', '0.1', '-HOST', f'localhost:{ncore}', '-WAIT'])
-
     train_prep.wait()
+    val_prep = subprocess.Popen([f'{schrodinger_path}/ligprep', '-isd', val_ligands, '-omae', val_output, '-epik', '-ph', '7.4', '-pht', '0.1', '-HOST', f'localhost:{ncore}', '-WAIT'])
     val_prep.wait()
     
+    # Change back to the starting directory
     os.chdir(start_dir)
 
     if train_prep.returncode != 0 or val_prep.returncode != 0:

@@ -1,14 +1,33 @@
-import sys, os, argparse, warnings, time
+import sys, os, argparse, time
 from subprocess import Popen
 
 def fail():
+    """
+    A helper function that stops the pipeline if there is a failure in the middle of the pipeline.
+    """
     raise Exception("MAMA MIA!!! MARIO encountered an error.")
 
 def start_timer(name):
+    """
+    A helper function that returns the start time of a job.
+
+    Parameters:
+        name (str) : The name of the stage of the pipeline.
+
+    Returns:
+        The starting time of the job.
+    """
     print(f'\tStarting {name} Job...\n')
     return time.time()
 
 def end_timer(name, start_time):
+    """
+    A helper function that returns the elapsed time of a job.
+
+    Parameters:
+        name (str) : The name of the stage of the pipeline.
+        start_time (float) : The starting time of the job.
+    """
     elapsed_time = time.time() - start_time
     print(f'\t{name} Job finished...\n\tTime: {elapsed_time:.2f} seconds\n')
 
@@ -98,7 +117,7 @@ if __name__ == '__main__':
         if prepwizard_job.returncode != 0: fail()
         end_timer('Prepwizard', prepwizard_start)
 
-    # Run grid jobs (for every protein geometry we get)
+    # Run grid jobs
     if do_gridgen:
         gridgen_start = start_timer('Gridgen')
         gridgen_job = Popen([f'{schrodinger_path}/run', 'gridgen.py', pdbid, ligid, '--ncore', str(ncore)])
@@ -118,6 +137,7 @@ if __name__ == '__main__':
         if train_dock.returncode != 0 or val_dock.returncode != 0: fail()
         end_timer("Docking", docking_start)
     
+    # Run the MMGBSA jobs
     if do_mmgbsa:
         mmgbsa_start = start_timer("MMGBSA")
         if do_pocket:
@@ -128,6 +148,7 @@ if __name__ == '__main__':
         if mmgbsa_job.returncode != 0: fail()
         end_timer("MMGBSA", mmgbsa_start)
 
+    # Run the AP-Net training job
     if do_apnet:
         apnet_start = start_timer("AP-NET-DG")
         ap_job = Popen(['python', 'apdriver.py', ligands])
@@ -135,6 +156,7 @@ if __name__ == '__main__':
         if ap_job.returncode != 0: fail()
         end_timer("AP-NET-DG", apnet_start)
 
+    # Run the analysis part of the calculation
     if do_analysis:
         analysis_start = start_timer("ANALYSIS")
         if not do_mmgbsa_analysis:

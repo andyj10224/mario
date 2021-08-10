@@ -5,8 +5,6 @@ from scipy.stats import spearmanr
 import schrodinger.structure as structure
 import schrodinger.structutils.smiles as smiles
 
-R = 1.987204e-3 # Gas Constant in kcal/mol
-T = 310
 PKI2DG = -1.3637
 
 def to_dG(pKi):
@@ -18,7 +16,7 @@ def to_dG(pKi):
     Returns:
         dG at 310 K
     """
-    return -1.3637 * float(pKi)
+    return PKI2DG * float(pKi)
 
 def write_summary(name, errs, data, exp, file):
     """
@@ -31,10 +29,13 @@ def write_summary(name, errs, data, exp, file):
         exp (list[float]) : The experimental dG
         file (file, NOT str) : The file object to write the summary to
     """
+
+    # Mean Error, Root Mean Squared Error, Mean Absolute Error
     me = np.mean(errs)
     rmse = np.sqrt(np.mean(np.square(errs)))
     mae = np.mean(np.abs(errs))
 
+    # Spearman Correlation, Correlation Coefficient, and R^2
     sr = spearmanr(data, exp)[0]
     r = np.corrcoef(data, exp)[0,1]
     r2 = r**2
@@ -71,12 +72,15 @@ if __name__ == '__main__':
         results['mmgbsa_dG'] = []
         results['mmgbsa_err'] = []
 
+    # Go to the AP-Net-dG directory to read the names of the systems, as well as
+    # to get the experimental delta G values
     dg_data = pd.read_pickle(f'{dg_path}/datasets/{setname}/dimers.pkl')
     ndata = len(dg_data)
     for n in range(ndata):
         results['system'].append(dg_data['system'][n])
         results['exp_dG'].append(to_dG(dg_data['label'][n]))
 
+    # Read the poseviewer file for the docking dG scores
     prime_datapath = f'docking/{setname}/pocket_pv.maegz'
     for n, st in enumerate(structure.StructureReader(prime_datapath)):
         if n == 0: continue
@@ -92,6 +96,7 @@ if __name__ == '__main__':
         results['dock_dG'].append(dock_dG)
         results['dock_err'].append(dock_dG - results['exp_dG'][n-1])
 
+    # Go to the ./apnetdg directory to read in the AP-Net-dG predicted dG scores
     dg_pred = pd.read_csv(f'apnetdg/{setname}/preds.csv')
     for n in range(ndata):
         pred_dG = to_dG(dg_pred['AP_net_dG_pKi'][n])
@@ -99,6 +104,7 @@ if __name__ == '__main__':
         results['apnet_dG'].append(pred_dG)
         results['apnet_err'].append(pred_dG - exp_dG)
 
+    # Read in the mmgbsa dG scores
     if do_mmgbsa:
         mm_res = pd.read_csv(f'mmgbsa/{setname}/output.csv')
         for n in range(len(mm_res)):
@@ -107,9 +113,11 @@ if __name__ == '__main__':
             results['mmgbsa_dG'].append(mm_dG)
             results['mmgbsa_err'].append(mm_dG - exp_dG)
 
+    # Make the directory to store the analysis results
     df_dir = os.path.join('analysis', setname)
     if not os.path.isdir(df_dir): os.makedirs(df_dir)
 
+    # Print out results to csv files (sorted by different scores)
     df = pd.DataFrame(data=results, dtype='object')
     df.to_csv(f'{df_dir}/results.csv', index=False)
 
@@ -126,6 +134,7 @@ if __name__ == '__main__':
         df_mmgbsa = df.sort_values('mmgbsa_dG', inplace=False)
         df_mmgbsa.to_csv(f'{df_dir}/results_sorted_mmgbsa.csv', index=False)
 
+    # Write the summary.txt file for summary statistics
     summary = open(f'{df_dir}/summary.txt', 'w')
     summary.write(f'\tSUMMARY OF RESULTS FOR SYSTEM {setname.upper()}\n\n')
 
