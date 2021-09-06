@@ -1,0 +1,13 @@
+# Outputs of mario
+__pycache__/*
+analysis/*
+apnetdg/*
+docking/*
+grids/*
+helper/__pycache__/*
+ligands/*_train.sdf
+ligands/*_val.sdf
+ligprep/*
+mmgbsa/*
+prepwizard/*
+.Preprocess*
